@@ -10,7 +10,7 @@ current revision loaded.
 TODO
 ----
 
-1.  This is a work in progress. It is not finished yet, and it currently maps itself to <f7> which is
+1.  This is a work in progress. It is not finished yet, and it currently maps itself to \<f7\> which is
     bad. Will fix.
 
 2.  Also it works of the current branch, this will change to be selectable across branches as this
