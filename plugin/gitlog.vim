@@ -38,19 +38,23 @@ function! GITLOG_GetHistory(branch, filename)
 		" have to get the files that it uses first
 	let s:repository_root = s:GITLOG_FindRespositoryRoot()
 
-	if (s:repository_root != "")
+	if (s:repository_root == "")
+		return 0
+	else
 		let s:revision_file = expand('%:p')
 		let s:revision_path = substitute(s:revision_file,s:repository_root,"","")
 		let s:original_window = bufwinnr("%")
-
-		silent execute "!git cat-file -e " . a:branch . ":" . s:revision_path
+			
+		silent execute "!git cat-file -e " . "HEAD:" . s:revision_path
 		if v:shell_error
 			echohl WarningMsg
 			echomsg "File " . a:branch . ":" . s:revision_path . " is not tracked"
 			echohl Normal
+			return 0
 		else
-			call s:GITLOG_OpenLogWindow(s:revision_path)
+			call s:GITLOG_OpenLogWindow(expand('%'))
 			call s:GITLOG_OpenBranchWindow()
+			return 1
 		endif
 	endif
 endfunction                                     								"}}}
@@ -98,8 +102,6 @@ function! GITLOG_OpenRevision()
 		echomsg "The repository does not have this file"
 		echohl WarningMsg
 	else
-
-		:echo fnamemodify("main.c", ":p:h")
 		call s:GITLOG_OpenCodeWindow(commit,s:revision_path)
 	endif
 endfunction																		"}}}
@@ -158,8 +160,9 @@ endfunction																		"}}}
 function!	GITLOG_ToggleWindows()
 
 	if !exists("s:gitlog_loaded")
-		let s:gitlog_loaded = 1
-		call GITLOG_GetHistory(GITLOG_GetBranch(),expand('%'))
+		if (GITLOG_GetHistory(GITLOG_GetBranch(),expand('%')))
+			let s:gitlog_loaded = 1
+		endif
 	else
 		unlet s:gitlog_loaded
 		call GITLOG_CloseWindows()
@@ -204,7 +207,7 @@ endfunction																		"}}}
 "	repository is in, else it returns the empty string.
 "
 function! s:GITLOG_FindRespositoryRoot()
-	let root = finddir(".git",expand('%:h'). "," . $PWD . ";" . $HOME)
+	let root = finddir(".git",expand('%:h'). "," . expand('%:p:h') . ";" . $HOME)
 	
 	if (root == "")
 		echohl WarningMsg
@@ -247,17 +250,17 @@ endfunction																	"}}}
 function! s:GITLOG_OpenLogWindow(revision)
 	if bufwinnr(bufnr("__gitlog__")) != -1
 		" window already open - just go to it
-		exe bufwinnr(bufnr("__gitlog__")) . "wincmd w"
+		silent exe bufwinnr(bufnr("__gitlog__")) . "wincmd w"
 		setlocal modifiable
 		exe "% delete"
 	else
 		" window not open need to create it
 		let s:buf_number = bufnr("__gitlog__",1)
-		topleft 40 vsplit
+		silent topleft 40 vsplit
 		set winfixwidth
 		set winwidth=40
 		set winminwidth=40
-		exe "buffer " . s:buf_number
+		silent exe "buffer " . s:buf_number
 		setlocal buftype=nofile bufhidden=wipe nobuflisted noswapfile nowrap
 	endif
 
@@ -290,7 +293,7 @@ function! s:GITLOG_OpenBranchWindow()
 
 	if bufwinnr(bufnr("__gitbranch__")) != -1
 		" window already open - just go to it
-		exe bufwinnr(bufnr("__gitbranch__")) . "wincmd w"
+		silent exe bufwinnr(bufnr("__gitbranch__")) . "wincmd w"
 		setlocal modifiable
 	else
 		" window not open need to create it
@@ -299,7 +302,7 @@ function! s:GITLOG_OpenBranchWindow()
 		set winfixwidth
 		set winwidth=40
 		set winminwidth=40
-		exe "buffer " . s:buf_number
+		silent exe "buffer " . s:buf_number
 		setlocal buftype=nofile bufhidden=wipe nobuflisted noswapfile nowrap
 	endif
 	
@@ -345,7 +348,7 @@ function! s:GITLOG_OpenDiffWindow(commit,file_path)
 		exe bufwinnr(bufnr(s:revision_file)) . "wincmd w"
 		let file_type = &filetype
 		diffthis
-		botright vsplit
+		silent botright vsplit
 		exe "buffer " . s:buf_number
 
 		redir => gitlog_file
@@ -386,7 +389,7 @@ function! s:GITLOG_OpenCodeWindow(commit,file_path)
 		let s:buf_number = bufnr(buffname,1)
 		exe bufwinnr(bufnr(s:revision_file)) . "wincmd w"
 		let file_type = &filetype
-		botright vsplit
+		silent botright vsplit
 		exe "buffer " . s:buf_number
 
 		redir => gitlog_file
