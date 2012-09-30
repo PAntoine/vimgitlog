@@ -1,17 +1,28 @@
 " vim: ts=4 tw=4 fdm=marker :
-" {{{
 " ---------------------------------------------------------------------------------
-"  Name  : gitlog
-"  Desc  : This plugin is a tool for looking at the GIT history of a file.
+"  Name   : gitlog
+"  Desc   : This plugin is a tool for looking at the GIT history of a file.
+"           
+"           The simplest way to use this plugin is to map the GITLOG_ToggleWindows
+"           function to the key of your choice (I use <F7>) and it will create
+"           the log window on creation and will delete all the windows (including
+"           the diffs that have been created) when it toggles off.
+"
+"           In the log window the two following commands work.
+"             o   - will open the file.
+"            <cr> - will open the revision for diff'ing.
+"
+"           It is that simple.
 " 
-"  Author: peterantoine
-"  Date  : 29/09/2012 14:42:03
+"  Author : peterantoine
+"  version: 1.0.0
+"  Date   : 29/09/2012 14:42:03
 " ---------------------------------------------------------------------------------
 "                      Copyright (c) 2012 Peter Antoine
 "                             All rights Reserved.
 "                     Released Under the Artistic Licence
 " ---------------------------------------------------------------------------------
-" }}}
+"
 " PUBLIC FUNCTIONS
 " FUNCTION: GITLOG_GetHistory(branch, filename)  								"{{{
 "
@@ -32,11 +43,6 @@ function! GITLOG_GetHistory(branch, filename)
 		let s:revision_path = substitute(s:revision_file,s:repository_root,"","")
 		let s:original_window = bufwinnr("%")
 
-		echo a:branch . ":" . s:revision_path
-		echo "  " . s:revision_file
-		echo "  " . s:revision_path
-		echo "  " . s:repository_root
-
 		silent execute "!git cat-file -e " . a:branch . ":" . s:revision_path
 		if v:shell_error
 			echohl WarningMsg
@@ -44,9 +50,7 @@ function! GITLOG_GetHistory(branch, filename)
 			echohl Normal
 		else
 			call s:GITLOG_OpenLogWindow(s:revision_path)
-"			call s:GITLOG_OpenBranchWindow()
-			call s:GITLOG_MapBufferKeys()
-			setlocal nomodifiable
+			call s:GITLOG_OpenBranchWindow()
 		endif
 	endif
 endfunction                                     								"}}}
@@ -71,7 +75,7 @@ function! GITLOG_DiffRevision()
 		echomsg "The repository does not have this file"
 		echohl WarningMsg
 	else
-		call s:GITLOG_OpenDiffWindow(commit . ":" . s:revision_path)
+		call s:GITLOG_OpenDiffWindow(commit,s:revision_path)
 	endif
 endfunction																		"}}}
 " FUNCITON:	GITLOG_OpenRevision()												{{{
@@ -94,9 +98,74 @@ function! GITLOG_OpenRevision()
 		echomsg "The repository does not have this file"
 		echohl WarningMsg
 	else
-		call s:GITLOG_OpenCodeWindow(commit . ":" . s:revision_path)
+
+		:echo fnamemodify("main.c", ":p:h")
+		call s:GITLOG_OpenCodeWindow(commit,s:revision_path)
 	endif
 endfunction																		"}}}
+" FUNCTION: GITLOG_CloseWindows()												{{{
+"
+" This function closes all the GitLog windows. It will search through all the
+" windows looking for the known named buffers (__gitbranch__ and __gitlog__) also
+" for windows with the __XXXXXXX:<some_text>__ pattern and close them all. It will
+" also call diffoff! to make tidy up.
+"
+" vars:
+" 	node
+"
+" returns:
+"	nothing
+"
+function! GITLOG_CloseWindows()
+	" close the log window
+	if bufwinnr(bufnr("__gitlog__")) != -1
+		exe bufwinnr(bufnr("__gitlog__")) . "wincmd w"
+		exe bufwinnr(bufnr("__gitlog__")) . "wincmd q"
+	endif
+
+	"close the branch window
+	if bufwinnr(bufnr("__gitbranch__")) != -1
+		exe bufwinnr(bufnr("__gitbranch__")) . "wincmd w"
+		exe bufwinnr(bufnr("__gitbranch__")) . "wincmd q"
+	endif
+
+	" close all the diff windows
+	for b in range(1, bufnr('$'))
+		if (bufexists(b))
+			if (substitute(bufname(b),"\\x\\x\\x\\x\\x\\x\\x:.\\+$","","") == "")
+				exe bufwinnr(b) . "wincmd w"
+				exe bufwinnr(b) . "wincmd q"
+			endif
+		endif
+	endfor
+
+	" and finally the original buffer
+	exe bufwinnr(bufnr(s:revision_file)) . "wincmd w"
+	diffoff
+
+endfunction																		"}}}
+" FUNCTION: GITLOG_ToggleWindows()												{{{
+"
+" This function toggles the gitlog windows. It will use the file in the current
+" window to use for loading the log.
+"
+" vars:
+" 	node
+"
+" returns:
+"	nothing
+"
+function!	GITLOG_ToggleWindows()
+
+	if !exists("s:gitlog_loaded")
+		let s:gitlog_loaded = 1
+		call GITLOG_GetHistory(GITLOG_GetBranch(),expand('%'))
+	else
+		unlet s:gitlog_loaded
+		call GITLOG_CloseWindows()
+	endif
+endfunction																		"}}}
+"
 " INTERNAL FUNCTIONS BELOW --- Do not call directly							
 " FUNCITON: GITLOG_GetCommitHash												{{{
 " 
@@ -164,7 +233,7 @@ function! s:GITLOG_MapBufferKeys()
 	map <buffer> <cr> :call GITLOG_DiffRevision()<cr>
 	map <buffer> o	  :call GITLOG_OpenRevision()<cr>
 endfunction																	"}}}
-" FUNCTION: GITLOG_OpenBranchWindow()											{{{
+" FUNCTION: GITLOG_OpenLogWindow()											{{{
 " 
 " This function will open the branch window if it is not already open. It will
 " fill it with the output of git branch window.
@@ -199,6 +268,10 @@ function! s:GITLOG_OpenLogWindow(revision)
 	let git_array = split(substitute(gitdiff_history,'[\x00]',"","g"),"\x0d")
 	call remove(git_array,0)
 	call setline(1,git_array)
+	setlocal nomodifiable
+	
+	" set the keys on the Log window
+	call s:GITLOG_MapBufferKeys()
 endfunction																"}}}
 " FUNCTION: GITLOG_OpenBranchWindow()									{{{
 "
@@ -213,6 +286,8 @@ endfunction																"}}}
 "	nothing
 "
 function! s:GITLOG_OpenBranchWindow()
+	let current_window = bufwinnr(bufnr("%"))
+
 	if bufwinnr(bufnr("__gitbranch__")) != -1
 		" window already open - just go to it
 		exe bufwinnr(bufnr("__gitbranch__")) . "wincmd w"
@@ -226,7 +301,19 @@ function! s:GITLOG_OpenBranchWindow()
 		set winminwidth=40
 		exe "buffer " . s:buf_number
 		setlocal buftype=nofile bufhidden=wipe nobuflisted noswapfile nowrap
-  endif
+	endif
+	
+	" now get the list of branches
+	redir => gitbranch_history
+	silent execute "!git branch -v"
+	redir END
+	let git_array = split(substitute(gitbranch_history,'[\x00]',"","g"),"\x0d")
+	call remove(git_array,0)
+	call setline(1,git_array)
+	setlocal nomodifiable
+	
+	" want to be in the log window - as the branch window is not important
+	exe current_window . "wincmd w"
 endfunction																"}}}
 " FUNCTION:	GITLOG_OpenDiffWindow(revision)								{{{
 "
@@ -243,15 +330,18 @@ endfunction																"}}}
 " returns:
 "	nothing
 "
-function! s:GITLOG_OpenDiffWindow(revision)
-	if bufwinnr(bufnr("__" . a:revision . "__")) != -1
+function! s:GITLOG_OpenDiffWindow(commit,file_path)
+	let revision = a:commit . ":" . a:file_path
+	let buffname = a:commit . ":" . fnamemodify(a:file_path,":t")
+
+	if bufwinnr(bufnr(buffname)) != -1
 		" window already open - just go to it
-		exe bufwinnr(bufnr("__" . a:revision . "__")) . "wincmd w"
+		exe bufwinnr(bufnr(buffname)) . "wincmd w"
 		setlocal modifiable
 		diffthis
 	else
 		" window not open need to create it
-		let s:buf_number = bufnr("__" . a:revision . "__",1)
+		let s:buf_number = bufnr(buffname,1)
 		exe bufwinnr(bufnr(s:revision_file)) . "wincmd w"
 		let file_type = &filetype
 		diffthis
@@ -259,7 +349,7 @@ function! s:GITLOG_OpenDiffWindow(revision)
 		exe "buffer " . s:buf_number
 
 		redir => gitlog_file
-		silent execute "!git --no-pager show " . a:revision
+		silent execute "!git --no-pager show " . revision
 		redir END
 	
 		" now write the captured text to the a new buffer - after removing
@@ -282,22 +372,25 @@ endfunction																"}}}
 " returns:
 "	nothing
 "
-function! s:GITLOG_OpenCodeWindow(revision)
-	if bufwinnr(bufnr("__" . a:revision . "__")) != -1
+function! s:GITLOG_OpenCodeWindow(commit,file_path)
+	let revision = a:commit . ":" . a:file_path
+	let buffname = a:commit . ":" . fnamemodify(a:file_path,":t")
+
+	if bufwinnr(bufnr(buffname)) != -1
 		" window already open - just go to it
-		exe bufwinnr(bufnr("__" . a:revision . "__")) . "wincmd w"
+		exe bufwinnr(bufnr(buffname)) . "wincmd w"
 		setlocal modifiable
-		diffoff
+		diffthis
 	else
 		" window not open need to create it
-		let s:buf_number = bufnr("__" . a:revision . "__",1)
+		let s:buf_number = bufnr(buffname,1)
 		exe bufwinnr(bufnr(s:revision_file)) . "wincmd w"
 		let file_type = &filetype
 		botright vsplit
 		exe "buffer " . s:buf_number
 
 		redir => gitlog_file
-		silent execute "!git --no-pager show " . a:revision
+		silent execute "!git --no-pager show " . revision
 		redir END
 	
 		" now write the captured text to the a new buffer - after removing
@@ -327,6 +420,4 @@ function! GITLOG_GetBranch()
 	    return ''
 	endif
 endfunction																	"}}}
-" this is bad -- need to remove.
-map <f7> :call GITLOG_GetHistory(GITLOG_GetBranch(),expand('%'))<cr>
 
