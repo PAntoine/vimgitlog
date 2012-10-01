@@ -42,19 +42,27 @@ function! GITLOG_GetHistory(branch, filename)
 		return 0
 	else
 		let s:revision_file = expand('%:p')
-		let s:revision_path = substitute(s:revision_file,s:repository_root,"","")
-		let s:original_window = bufwinnr("%")
-			
-		silent execute "!git cat-file -e " . "HEAD:" . s:revision_path
-		if v:shell_error
+
+        if (s:revision_file == "")
 			echohl WarningMsg
-			echomsg "File " . a:branch . ":" . s:revision_path . " is not tracked"
+			echomsg "No file in the buffer, can't get history"
 			echohl Normal
-			return 0
-		else
-			call s:GITLOG_OpenLogWindow(expand('%'))
-			call s:GITLOG_OpenBranchWindow()
-			return 1
+        	return 0
+        else
+			let s:revision_path = substitute(s:revision_file,s:repository_root,"","")
+			let s:original_window = bufwinnr("%")
+
+			silent execute "!git cat-file -e " . "HEAD:" . s:revision_path
+			if v:shell_error
+				echohl WarningMsg
+				echomsg "File " . a:branch . ":" . s:revision_path . " is not tracked"
+				echohl Normal
+				return 0
+			else
+				call s:GITLOG_OpenLogWindow(expand('%'))
+				call s:GITLOG_OpenBranchWindow()
+				return 1
+			endif
 		endif
 	endif
 endfunction                                     								"}}}
