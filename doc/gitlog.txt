@@ -1,0 +1,113 @@
+*gitlog.txt*  For Vim version 7.0 Last change: 2012 October 26
+
+                                           
+        ,----.   ,--.  ,--.  ,--.                                          ~
+       '  .-./   `--',-'  '-.|  |    ,---.  ,---.                          ~
+       |  | .---.,--.'-.  .-'|  |   | .-. || .-. |                         ~
+       '  '--'  ||  |  |  |  |  '--.' '-' '' '-' '                         ~
+        `------' `--'  `--'  `-----' `---' .`-  /                          ~
+                                           `---'                           ~
+
+
+Author:	  Peter Antoine
+Date:     October 26, 2012
+Version:  1.1.0
+HomePage: https://github.com/PAntoine/vimgitlog
+
+
+For instructions on installing this file, type:
+>
+	:help add-local-help |add-local-help| inside Vim.
+<
+
+==============================================================================
+1. Contents                                       *gitlog* *gitlog-contents*
+
+    1. Contents...............................: |gitlog-contents|
+    2. Description............................: |gitlog-description|
+    3. Usage..................................: |gitlog-usage|
+    4. Mapping GitLog Functions...............: |gitlog-mapping|
+    5. History................................: |gitlog-history|
+
+==============================================================================
+2. Description                                   *gitlog-description*
+
+This is a simple pure vim plugin that interfaces with git. It allows you
+to simply diff different version of the file in the main window. 
+
+This plugin tries to make access to the history the git stores easier to
+access.
+
+For details on the changes between versions see |gitlog-history|.
+
+==============================================================================
+3. Usage                                         *gitlog-usage*
+
+GitLog expects that you are in a sub-directory of the Git repository. When
+GitLog is activated it will check to see if there is a .git directory in the
+path. It will error if it cannot find one. It will use this Git repository
+for all operations.
+
+The only function that really should be called outside of GitLog is the toggle
+function 'GITLOG_ToggleWindows()' function. This will do (as really should be
+expected) toggle the GitLog windows.
+
+What it will display is a full-height window split into two. The top window
+will have the current branch name followed by the commits on that branch. The
+bottom left window will have all the local branches that are found in the 
+repository.
+
+The windows will look as follows:
+
+       -------------------------------------------------------------------
+      | branch: master     |                                              |
+      | * xxxxxxx commit th|                                              |
+      | * xxxxxxx commit th|                                              |
+      .                    .                                              .
+      .                    .                                              .
+      .                    .                                              .
+      |====================|                                              |
+      |  branch_1 xxxxxxx s|                                              |
+      |  branch_2 xxxxxxx s|                                              |
+      |* branch_3 xxxxxxx s|                                              |
+      |  branch_4 xxxxxxx s|                                              |
+      |                    |                                              |
+      |                    |                                              |
+       -------------------------------------------------------------------
+
+The '*' in the branch window represents the current branch that the repository
+is on. GitLog does not change this. Internally it may list other branches but
+it does not change the branch in the repository.
+
+GitLog, does not support many commands. If you press <cr> within the log window
+then the revision matching the commit will be diff'ed against the file that is
+in the main window. If 'c' is pressed then the file will be opened in a window
+alongside the file.
+
+In the branch window <cr> will change the log window to list the commits in
+that branch. It will NOT change the branch that the repository is in.
+
+==============================================================================
+4. Mapping GitLog Functions                      *gitlog-mapping*
+
+There is only one function that really required mapping and that is the
+toggle function. As this is a single operation function I would assume that
+you would attach it to a function key, so the following mapping would be useful
+>
+	:map <silent> <f7> :call GITLOG_ToggleWindows()<cr>
+<
+This will install GITLOG on the <f7> key.
+
+==============================================================================
+5. History                                       *gitlog-history*
+
+  1.1.0: October 27, 2012:
+         PA: Added functionality to the branch window. Now selecting the branch
+             will update the log window to reflect the commits in that branch.
+
+         PA: Added the help file.
+
+  1.0.0: <some time in the past>
+         PA: Initial release.
+
+vim: ts=4 ft=help tw=78

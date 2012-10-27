@@ -1,6 +1,8 @@
 vimgitlog
 =========
 
+Version: 1.1.0
+
 Git log and diff plugin for vim.
 
 Introduction
@@ -12,8 +14,13 @@ current revision loaded.
 
 In the log window \_\_gitlog\_\_ the two following commands work:
 
-    __o__	opens the file. This will simply open the file in a new window.
-	__\<cr\>__	This will open the file and diff it against the window that was active when it was lauched.
+    _o_			opens the file. This will simply open the file in a new window.
+	_\<cr\>_	This will open the file and diff it against the window that was active when it was lauched.
+
+In the Branch window:
+
+    <cr>        This will change the log window to the branch selected. It does not change the current
+	            branch of the given repository.
 
 Installation
 ------------
@@ -29,10 +36,7 @@ And the should be it.
 TODO
 ----
 
-1.  Also it works of the current branch, this will change to be selectable across branches as this
-    is more usefull.
-
-2.  It is not colour coded yet, it will.
+1.  It is not colour coded yet, it will be.
 
 Licence and Copyright
 ---------------------

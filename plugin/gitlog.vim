@@ -2,70 +2,72 @@
 " ---------------------------------------------------------------------------------
 "  Name   : gitlog
 "  Desc   : This plugin is a tool for looking at the GIT history of a file.
-"           
-"           The simplest way to use this plugin is to map the GITLOG_ToggleWindows
-"           function to the key of your choice (I use <F7>) and it will create
-"           the log window on creation and will delete all the windows (including
-"           the diffs that have been created) when it toggles off.
+"			
+"			The simplest way to use this plugin is to map the GITLOG_ToggleWindows
+"			function to the key of your choice (I use <F7>) and it will create
+"			the log window on creation and will delete all the windows (including
+"			the diffs that have been created) when it toggles off.
 "
-"           In the log window the two following commands work.
-"             o   - will open the file.
-"            <cr> - will open the revision for diff'ing.
+"			In the log window the two following commands work.
+"			  o   - will open the file.
+"			 <cr> - will open the revision for diff'ing.
 "
-"           It is that simple.
+"			In the branch window it will use the following commands:
+"			 <cr> - will swap the GIT_LOG view of the branch - does not effect th
+"					actual branch that is being used.
+"
+"			It is that simple.
 " 
 "  Author : peterantoine
-"  version: 1.0.0
+"  version: 1.1.0
 "  Date   : 29/09/2012 14:42:03
 " ---------------------------------------------------------------------------------
-"                      Copyright (c) 2012 Peter Antoine
-"                             All rights Reserved.
-"                     Released Under the Artistic Licence
+"					   Copyright (c) 2012 Peter Antoine
+"							  All rights Reserved.
+"					  Released Under the Artistic Licence
 " ---------------------------------------------------------------------------------
 "
 " PUBLIC FUNCTIONS
-" FUNCTION: GITLOG_GetHistory(branch, filename)  								"{{{
+" FUNCTION: GITLOG_GetHistory(filename)										"{{{
 "
 " This function will open the log window and load the history for the given file.
 " If the file does not exist within the given branch then then function will 
-" produce a message that states that and then it will do nothing.
+" produce a message that states that and then it will do nothing. It will used 
+" the current value od s:gitlog_current_branch as the branch to search on.
 " 
 " vars:
-"	branch 		the git branch to look for history on.
-" 	filename	the filename to search for history for.
+"	filename	the filename to search for history for.
 "
-function! GITLOG_GetHistory(branch, filename)
+function! GITLOG_GetHistory(filename)
 		" have to get the files that it uses first
 	let s:repository_root = s:GITLOG_FindRespositoryRoot()
 
 	if (s:repository_root == "")
 		return 0
 	else
-		let s:revision_file = expand('%:p')
-
-        if (s:revision_file == "")
+		if (a:filename == "")
 			echohl WarningMsg
 			echomsg "No file in the buffer, can't get history"
 			echohl Normal
-        	return 0
-        else
-			let s:revision_path = substitute(s:revision_file,s:repository_root,"","")
+			return 0
+		else
+			let s:revision_path = substitute(a:filename,s:repository_root,"","")
 			let s:original_window = bufwinnr("%")
 
 			silent execute "!git cat-file -e " . "HEAD:" . s:revision_path
 			if v:shell_error
 				echohl WarningMsg
-				echomsg "File " . a:branch . ":" . s:revision_path . " is not tracked"
+				echomsg "File " . s:gitlog_current_branch . ":" . s:revision_path . " is not tracked"
 				echohl Normal
 				return 0
 			else
-				call s:GITLOG_OpenLogWindow(expand('%'))
+				call s:GITLOG_OpenLogWindow(a:filename)
 				call s:GITLOG_OpenBranchWindow()
 				return 1
 			endif
 		endif
 	endif
-endfunction                                     								"}}}
+endfunction																		"}}}
 " FUNCITON:	GITLOG_DiffRevision()											{{{
 "
 " This function will open a revision for diff'ing. 
@@ -81,13 +83,15 @@ endfunction                                     								"}}}
 function! GITLOG_DiffRevision()
 	let commit = s:GITLOG_GetCommitHash()
 
-	silent execute "!git cat-file -e " . commit . ":" . s:revision_path 
-	if v:shell_error
-		echohl Normal
-		echomsg "The repository does not have this file"
-		echohl WarningMsg
-	else
-		call s:GITLOG_OpenDiffWindow(commit,s:revision_path)
+	if (commit != "")
+		silent execute "!git cat-file -e " . commit . ":" . s:revision_path 
+		if v:shell_error
+			echohl Normal
+			echomsg "The repository does not have this file"
+			echohl WarningMsg
+		else
+			call s:GITLOG_OpenDiffWindow(commit,s:revision_path)
+		endif
 	endif
 endfunction																		"}}}
 " FUNCITON:	GITLOG_OpenRevision()												{{{
@@ -104,13 +108,15 @@ endfunction																		"}}}
 function! GITLOG_OpenRevision()
 	let commit = s:GITLOG_GetCommitHash()
 
-	silent execute "!git cat-file -e " . commit . ":" . s:revision_path 
-	if v:shell_error
-		echohl Normal
-		echomsg "The repository does not have this file"
-		echohl WarningMsg
-	else
-		call s:GITLOG_OpenCodeWindow(commit,s:revision_path)
+	if (commit != "")
+	  silent execute "!git cat-file -e " . commit . ":" . s:revision_path 
+	  if v:shell_error
+		  echohl Normal
+		  echomsg "The repository does not have this file"
+		  echohl WarningMsg
+	  else
+		  call s:GITLOG_OpenCodeWindow(commit,s:revision_path)
+	  endif
 	endif
 endfunction																		"}}}
 " FUNCTION: GITLOG_CloseWindows()												{{{
@@ -121,7 +127,7 @@ endfunction																		"}}}
 " also call diffoff! to make tidy up.
 "
 " vars:
-" 	node
+"	node
 "
 " returns:
 "	nothing
@@ -160,7 +166,7 @@ endfunction																		"}}}
 " window to use for loading the log.
 "
 " vars:
-" 	node
+"	node
 "
 " returns:
 "	nothing
@@ -168,12 +174,40 @@ endfunction																		"}}}
 function!	GITLOG_ToggleWindows()
 
 	if !exists("s:gitlog_loaded")
-		if (GITLOG_GetHistory(GITLOG_GetBranch(),expand('%')))
+		let s:gitlog_current_branch = GITLOG_GetBranch()
+		let s:revision_file = expand('%:p')
+
+
+		if (GITLOG_GetHistory(s:revision_file))
 			let s:gitlog_loaded = 1
 		endif
 	else
 		unlet s:gitlog_loaded
 		call GITLOG_CloseWindows()
+	endif
+endfunction																		"}}}
+" FUNCTION: GITLOG_SwitchLocalBranch()											{{{
+"
+" This function will set the s:gitlog_current_branch to the name of the
+" branch that is under the cursor in the branch window.
+"
+" vars:
+"	none
+"
+" returns:
+"	nothing
+"
+function! GITLOG_SwitchLocalBranch()
+	let new_branch = s:GITLOG_GetBranchName()
+	
+	if (new_branch != "")
+		let s:gitlog_current_branch = new_branch
+
+		if (!GITLOG_GetHistory(expand(s:revision_file)))
+			echohl Normal
+			echomsg "The branch " . s:gitlog_current_branch . " does not have this file"
+			echohl WarningMsg
+		endif
 	endif
 endfunction																		"}}}
 "
@@ -200,6 +234,24 @@ function! s:GITLOG_GetCommitHash()
 	endif
 
 	return commit
+endfunction																		"}}}
+" FUNCITON: GITLOG_GetBranchName												{{{
+" 
+" This function will search for the branch name on the current line of the buffer. The name
+" starts 2 characters into the line and goes until the first whitespace character is found.
+"
+" vars:
+"	none
+"
+" returns:
+"	the 7 hex digits of the commit hash, else the empty string.
+"
+function! s:GITLOG_GetBranchName()
+	let x =  getline(".")
+	
+	let branch_name = substitute(x,"^..\\(\\S\\+\\) .\\+$","\\1","")
+
+	return branch_name
 endfunction																		"}}}
 " FUNCTION: GITLOG_FindRespositoryRoot()										{{{
 "
@@ -229,7 +281,7 @@ function! s:GITLOG_FindRespositoryRoot()
 
 	return root
 endfunction																	"}}}
-" FUNCTION: GITLOG_MapBufferKeys()											{{{
+" FUNCTION: GITLOG_MapLogBufferKeys()										{{{
 "
 " This function maps the keys that the buffer will respond to. All the keys are
 " local to the buffer.
@@ -240,14 +292,14 @@ endfunction																	"}}}
 " returns:
 "	nothing
 "
-function! s:GITLOG_MapBufferKeys()
-	map <buffer> <cr> :call GITLOG_DiffRevision()<cr>
-	map <buffer> o	  :call GITLOG_OpenRevision()<cr>
+function! s:GITLOG_MapLogBufferKeys()
+	map <buffer> <silent> <cr> :call GITLOG_DiffRevision()<cr>
+	map <buffer> <silent> o	  :call GITLOG_OpenRevision()<cr>
 endfunction																	"}}}
 " FUNCTION: GITLOG_OpenLogWindow()											{{{
 " 
-" This function will open the branch window if it is not already open. It will
-" fill it with the output of git branch window.
+" This function will open the log window if it is not already open. It will
+" fill it with the output of git rev list window.
 "
 " vars:
 "	none
@@ -255,7 +307,7 @@ endfunction																	"}}}
 " returns:
 "	nothing
 "
-function! s:GITLOG_OpenLogWindow(revision)
+function! s:GITLOG_OpenLogWindow(file_name)
 	if bufwinnr(bufnr("__gitlog__")) != -1
 		" window already open - just go to it
 		silent exe bufwinnr(bufnr("__gitlog__")) . "wincmd w"
@@ -271,24 +323,40 @@ function! s:GITLOG_OpenLogWindow(revision)
 		silent exe "buffer " . s:buf_number
 		setlocal buftype=nofile bufhidden=wipe nobuflisted noswapfile nowrap
 	endif
+	
+	"need to change the window
+	setlocal modifiable
 
 	" now get the file history for the window
 	redir => gitdiff_history
-	silent execute "!git rev-list HEAD --oneline --graph -- " . a:revision
+	silent execute "!git rev-list " . s:gitlog_current_branch . " --oneline --graph -- " . a:file_name
 	redir END
 	let git_array = split(substitute(gitdiff_history,'[\x00]',"","g"),"\x0d")
 	call remove(git_array,0)
-	call setline(1,git_array)
-	setlocal nomodifiable
+	call setline(1,[ 'branch: ' . s:gitlog_current_branch] + git_array)
 	
 	" set the keys on the Log window
-	call s:GITLOG_MapBufferKeys()
+	call s:GITLOG_MapLogBufferKeys()
+
+	setlocal nomodifiable
+endfunction																"}}}
+" FUNCTION: GITLOG_MapBranchBufferKeys()								{{{
+"
+" This function maps the keys that the buffer will respond to. All the keys are
+" local to the buffer.
+"
+" vars:
+"	none
+"
+" returns:
+"	nothing
+"
+function! s:GITLOG_MapBranchBufferKeys()
+	map <buffer> <silent> <cr> :call GITLOG_SwitchLocalBranch()<cr>
 endfunction																"}}}
 " FUNCTION: GITLOG_OpenBranchWindow()									{{{
 "
-" This function will open the log window. It will see if it is open already if
-" so it will switch to that buffer. As the buffer is marked as nomodifiable this
-" function will remove that as then history log will want to write to that.
+" This function will open the branch window.
 "
 " vars:
 "	none
@@ -302,7 +370,6 @@ function! s:GITLOG_OpenBranchWindow()
 	if bufwinnr(bufnr("__gitbranch__")) != -1
 		" window already open - just go to it
 		silent exe bufwinnr(bufnr("__gitbranch__")) . "wincmd w"
-		setlocal modifiable
 	else
 		" window not open need to create it
 		let s:buf_number = bufnr("__gitbranch__",1)
@@ -313,6 +380,9 @@ function! s:GITLOG_OpenBranchWindow()
 		silent exe "buffer " . s:buf_number
 		setlocal buftype=nofile bufhidden=wipe nobuflisted noswapfile nowrap
 	endif
+
+	"need to change the window
+	setlocal modifiable
 	
 	" now get the list of branches
 	redir => gitbranch_history
@@ -321,8 +391,12 @@ function! s:GITLOG_OpenBranchWindow()
 	let git_array = split(substitute(gitbranch_history,'[\x00]',"","g"),"\x0d")
 	call remove(git_array,0)
 	call setline(1,git_array)
-	setlocal nomodifiable
 	
+	" set the keys on the branch window
+	call s:GITLOG_MapBranchBufferKeys()
+	
+	setlocal nomodifiable
+
 	" want to be in the log window - as the branch window is not important
 	exe current_window . "wincmd w"
 endfunction																"}}}
@@ -424,11 +498,11 @@ endfunction																	"}}}
 "	nothing
 "
 function! GITLOG_GetBranch()
-    let branch = system("git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* //'")
-    if branch != ''
-        return substitute(branch, '\n', '', 'g')
+	let branch = system("git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* //'")
+	if branch != ''
+		return substitute(branch, '\n', '', 'g')
 	else
-	    return ''
+		return ''
 	endif
 endfunction																	"}}}
 
