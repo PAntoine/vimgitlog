@@ -14,8 +14,8 @@ current revision loaded.
 
 In the log window \_\_gitlog\_\_ the two following commands work:
 
-    _o_			opens the file. This will simply open the file in a new window.
-	_\<cr\>_	This will open the file and diff it against the window that was active when it was lauched.
+    o			opens the file. This will simply open the file in a new window.
+	<cr>		This will open the file and diff it against the window that was active when it was lauched.
 
 In the Branch window:
 

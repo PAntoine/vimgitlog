@@ -19,14 +19,21 @@
 "			It is that simple.
 " 
 "  Author : peterantoine
-"  version: 1.1.0
+"  version: 1.1.1
 "  Date   : 29/09/2012 14:42:03
 " ---------------------------------------------------------------------------------
 "					   Copyright (c) 2012 Peter Antoine
 "							  All rights Reserved.
 "					  Released Under the Artistic Licence
 " ---------------------------------------------------------------------------------
-"
+"{{{ Revision History
+"    Version   Author Date        Changes
+"    -------   ------ ----------  -------------------------------------------------
+"    1.0.0     PA     10.10.2012  Initial revision
+"    1.1.0     PA     27.10.2012  Added functionality to the Branch window.
+"    1.1.1     PA     21.11.2012  Fixed issue with not finding history if the
+"                                 editor was not launched in the repository tree.
+"																				}}}
 " PUBLIC FUNCTIONS
 " FUNCTION: GITLOG_GetHistory(filename)										"{{{
 "
@@ -40,7 +47,7 @@
 "
 function! GITLOG_GetHistory(filename)
 		" have to get the files that it uses first
-	let s:repository_root = s:GITLOG_FindRespositoryRoot()
+	let s:repository_root = s:GITLOG_FindRespositoryRoot(a:filename)
 
 	if (s:repository_root == "")
 		return 0
@@ -53,8 +60,8 @@ function! GITLOG_GetHistory(filename)
 		else
 			let s:revision_path = substitute(a:filename,s:repository_root,"","")
 			let s:original_window = bufwinnr("%")
-
-			silent execute "!git cat-file -e " . "HEAD:" . s:revision_path
+			
+			silent execute "!git --git-dir=" . s:repository_root . ".git cat-file -e " . "HEAD:" . s:revision_path
 			if v:shell_error
 				echohl WarningMsg
 				echomsg "File " . s:gitlog_current_branch . ":" . s:revision_path . " is not tracked"
@@ -84,7 +91,7 @@ function! GITLOG_DiffRevision()
 	let commit = s:GITLOG_GetCommitHash()
 
 	if (commit != "")
-		silent execute "!git cat-file -e " . commit . ":" . s:revision_path 
+		silent execute "!git --git-dir=" . s:repository_root . ".git cat-file -e " . commit . ":" . s:revision_path 
 		if v:shell_error
 			echohl Normal
 			echomsg "The repository does not have this file"
@@ -109,7 +116,7 @@ function! GITLOG_OpenRevision()
 	let commit = s:GITLOG_GetCommitHash()
 
 	if (commit != "")
-	  silent execute "!git cat-file -e " . commit . ":" . s:revision_path 
+	  silent execute "!git --git-dir=" . s:repository_root . ".git cat-file -e " . commit . ":" . s:revision_path 
 	  if v:shell_error
 		  echohl Normal
 		  echomsg "The repository does not have this file"
@@ -177,7 +184,6 @@ function!	GITLOG_ToggleWindows()
 		let s:gitlog_current_branch = GITLOG_GetBranch()
 		let s:revision_file = expand('%:p')
 
-
 		if (GITLOG_GetHistory(s:revision_file))
 			let s:gitlog_loaded = 1
 		endif
@@ -204,9 +210,9 @@ function! GITLOG_SwitchLocalBranch()
 		let s:gitlog_current_branch = new_branch
 
 		if (!GITLOG_GetHistory(expand(s:revision_file)))
-			echohl Normal
-			echomsg "The branch " . s:gitlog_current_branch . " does not have this file"
 			echohl WarningMsg
+			echomsg "The branch " . s:gitlog_current_branch . " does not have this file"
+			echohl Normal
 		endif
 	endif
 endfunction																		"}}}
@@ -253,21 +259,22 @@ function! s:GITLOG_GetBranchName()
 
 	return branch_name
 endfunction																		"}}}
-" FUNCTION: GITLOG_FindRespositoryRoot()										{{{
+" FUNCTION: GITLOG_FindRespositoryRoot(filename)								{{{
 "
-" This function will search the tree UPWARDS to find the git repository that the 
-" file belongs to. If it cannot find the repository then it will generate an error
-" and then return an empty string.
+" This function will search the tree UPWARDS and downwards to find the git 
+" repository that the file belongs to. If it cannot find the repository then it
+" will generate an error and then return an empty string. It will use the given
+" filename to start the search from.
 "
 " vars:
-"	none
+"	filename	The file to get the repository root from.
 "
 " returns:
 "	If there is a .git directory in the tree, it returns the directory that the .git
 "	repository is in, else it returns the empty string.
 "
-function! s:GITLOG_FindRespositoryRoot()
-	let root = finddir(".git",expand('%:h'). "," . expand('%:p:h') . ";" . $HOME)
+function! s:GITLOG_FindRespositoryRoot(filename)
+	let root = finddir(".git",fnamemodify(a:filename,':h'). "," . fnamemodify(a:filename,':p:h') . ";" . $HOME)
 	
 	if (root == "")
 		echohl WarningMsg
@@ -276,7 +283,7 @@ function! s:GITLOG_FindRespositoryRoot()
 	elseif (root == '.git')
 		let root = getcwd() . '/'
 	else
-		let root = substitute(root,"\\.git","","")
+		let root = substitute(fnamemodify(root,':p'),"\\.git/","","")
 	endif
 
 	return root
@@ -328,9 +335,13 @@ function! s:GITLOG_OpenLogWindow(file_name)
 	setlocal modifiable
 
 	" now get the file history for the window
+	" rev-list does not support the --git-dir flag, so have to cd into the directory.
+	exec 'cd' fnameescape(s:repository_root)
 	redir => gitdiff_history
-	silent execute "!git rev-list " . s:gitlog_current_branch . " --oneline --graph -- " . a:file_name
+	silent execute "!git --git-dir=" . s:repository_root . ".git rev-list " . s:gitlog_current_branch . " --oneline --graph -- " . a:file_name
 	redir END
+	cd -
+
 	let git_array = split(substitute(gitdiff_history,'[\x00]',"","g"),"\x0d")
 	call remove(git_array,0)
 	call setline(1,[ 'branch: ' . s:gitlog_current_branch] + git_array)
@@ -386,7 +397,7 @@ function! s:GITLOG_OpenBranchWindow()
 	
 	" now get the list of branches
 	redir => gitbranch_history
-	silent execute "!git branch -v"
+	silent execute "!git --git-dir=" . s:repository_root . ".git branch -v"
 	redir END
 	let git_array = split(substitute(gitbranch_history,'[\x00]',"","g"),"\x0d")
 	call remove(git_array,0)
@@ -434,7 +445,7 @@ function! s:GITLOG_OpenDiffWindow(commit,file_path)
 		exe "buffer " . s:buf_number
 
 		redir => gitlog_file
-		silent execute "!git --no-pager show " . revision
+		silent execute "!git --git-dir=" . s:repository_root . ".git --no-pager show " . revision
 		redir END
 	
 		" now write the captured text to the a new buffer - after removing
@@ -475,7 +486,7 @@ function! s:GITLOG_OpenCodeWindow(commit,file_path)
 		exe "buffer " . s:buf_number
 
 		redir => gitlog_file
-		silent execute "!git --no-pager show " . revision
+		silent execute "!git --git-dir=" . s:repository_root . ".git --no-pager show " . revision
 		redir END
 	
 		" now write the captured text to the a new buffer - after removing
@@ -498,7 +509,7 @@ endfunction																	"}}}
 "	nothing
 "
 function! GITLOG_GetBranch()
-	let branch = system("git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* //'")
+	let branch = system("git --git-dir=" . s:repository_root . ".git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* //'")
 	if branch != ''
 		return substitute(branch, '\n', '', 'g')
 	else
