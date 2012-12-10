@@ -19,7 +19,7 @@
 "			It is that simple.
 " 
 "  Author : peterantoine
-"  version: 1.1.1
+"  version: 1.1.2
 "  Date   : 29/09/2012 14:42:03
 " ---------------------------------------------------------------------------------
 "					   Copyright (c) 2012 Peter Antoine
@@ -33,6 +33,8 @@
 "    1.1.0     PA     27.10.2012  Added functionality to the Branch window.
 "    1.1.1     PA     21.11.2012  Fixed issue with not finding history if the
 "                                 editor was not launched in the repository tree.
+"    1.1.2     pa     10.12.2012  Fixed broken plugin. Ordero of parameter setting
+"                                 caused by the last fix, broke the plugin.
 "																				}}}
 " PUBLIC FUNCTIONS
 " FUNCTION: GITLOG_GetHistory(filename)										"{{{
@@ -46,9 +48,7 @@
 "	filename	the filename to search for history for.
 "
 function! GITLOG_GetHistory(filename)
-		" have to get the files that it uses first
-	let s:repository_root = s:GITLOG_FindRespositoryRoot(a:filename)
-
+	" have to get the files that it uses first
 	if (s:repository_root == "")
 		return 0
 	else
@@ -179,10 +179,10 @@ endfunction																		"}}}
 "	nothing
 "
 function!	GITLOG_ToggleWindows()
-
 	if !exists("s:gitlog_loaded")
-		let s:gitlog_current_branch = GITLOG_GetBranch()
 		let s:revision_file = expand('%:p')
+		let s:repository_root = s:GITLOG_FindRespositoryRoot(s:revision_file)
+		let s:gitlog_current_branch = GITLOG_GetBranch()
 
 		if (GITLOG_GetHistory(s:revision_file))
 			let s:gitlog_loaded = 1
