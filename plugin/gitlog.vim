@@ -338,7 +338,7 @@ function! s:GITLOG_OpenLogWindow(file_name)
 	" rev-list does not support the --git-dir flag, so have to cd into the directory.
 	exec 'cd' fnameescape(s:repository_root)
 	redir => gitdiff_history
-	silent execute "!git --git-dir=" . s:repository_root . ".git rev-list " . s:gitlog_current_branch . " --oneline --graph -- " . a:file_name
+	silent execute "!git --git-dir=" . s:repository_root . ".git rev-list " . shellescape(s:gitlog_current_branch,1) . " --oneline --graph -- " . a:file_name
 	redir END
 	cd -
 
