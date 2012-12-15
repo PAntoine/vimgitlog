@@ -1,4 +1,4 @@
-*gitlog.txt*  For Vim version 7.0 Last change: 2012 October 26
+*gitlog.txt*  For Vim version 7.0 Last change: 2012 December 14
 
                                            
         ,----.   ,--.  ,--.  ,--.                                          ~
@@ -10,8 +10,8 @@
 
 
 Author:	  Peter Antoine
-Date:     October 26, 2012
-Version:  1.1.0
+Date:     December 14, 2012
+Version:  1.2.0
 HomePage: https://github.com/PAntoine/vimgitlog
 
 
@@ -26,8 +26,9 @@ For instructions on installing this file, type:
     1. Contents...............................: |gitlog-contents|
     2. Description............................: |gitlog-description|
     3. Usage..................................: |gitlog-usage|
-    4. Mapping GitLog Functions...............: |gitlog-mapping|
-    5. History................................: |gitlog-history|
+    4. Git History Searching..................: |gitlog-searching|
+    5. Mapping GitLog Functions...............: |gitlog-mapping|
+    6. History................................: |gitlog-history|
 
 ==============================================================================
 2. Description                                   *gitlog-description*
@@ -88,6 +89,45 @@ In the branch window <cr> will change the log window to list the commits in
 that branch. It will NOT change the branch that the repository is in.
 
 ==============================================================================
+4. Git History Searching								*gitlog-searching*
+
+GitLog has the ability to allow for searching the historical commits in the
+repository for text strings. GitLog allows for this to be done either on the
+current selected commit or, on a selection of commits.
+
+To search the repository in the Log Window 's' while the cursor is on a 
+single commit, or use the visual selection to select a group of commits then
+press 's'. GitLog will then present you with a prompt for the string that is
+to be searched for. Type in the string then press return and the following
+extra window will appear:
+
+       -------------------------------------------------------------------
+      | branch: master     |                                              |
+      | * xxxxxxx commit th|                                              |
+      | * xxxxxxx commit th|                                              |
+      .                    .                                              .
+      .                    .                                              .
+      .                    .                                              .
+      |====================|==============================================|
+      |  branch_1 xxxxxxx s|xxxxxxx:filname:nn:the line from the file     |
+      |  branch_2 xxxxxxx s|xxxxxxx:filname:nn:the line from the file     |
+      |* branch_3 xxxxxxx s|xxxxxxx:filname:nn:the line from the file     |
+      |  branch_4 xxxxxxx s|xxxxxxx:filname:nn:the line from the file     |
+      |                    |xxxxxxx:filname:nn:the line from the file     |
+      |                    |xxxxxxx:filname:nn:the line from the file     |
+       -------------------------------------------------------------------
+
+This extra window shows files that have been found in the search with the
+commits that they belong to. This window now works in the same way as the
+log window, that is if you press '<cr>' the file that is selected will be
+diff'ed against the same file in the current repository. If 'o' is selected
+then the selected revision of the file will be opened along side the current
+file in the window.
+
+The search windows can be pulled down with the rest by toggling the GitLog
+windows.
+
+==============================================================================
 4. Mapping GitLog Functions                      *gitlog-mapping*
 
 There is only one function that really required mapping and that is the
@@ -101,14 +141,20 @@ This will install GITLOG on the <f7> key.
 ==============================================================================
 5. History                                       *gitlog-history*
 
+  1.2.0: December 14, 2012
+         PA: Added repository search capability.
+		 PA: Added syntax highlighting.
+		 PA: Fixed the way that buffers are created to stop leaking buffers.
+		 PA: Fixed the way it closes buffers to stop it closing the editor.
+
   1.1.2: December 12, 2012
          PA: Fixed broken plugin. Order of parameter setting caused by the last fix,
-                    broke the plugin. Also fixed problem with un-escaped branchname causing
-                        git to not return list of changes.
+             broke the plugin. Also fixed problem with un-escaped branchname causing
+             git to not return list of changes.
 
   1.1.1: November 21, 2012
          PA: Fixed issue with not finding history if the editor was not launched
-                    in the repository tree.
+             in the repository tree.
 
   1.1.0: October 27, 2012:
          PA: Added functionality to the branch window. Now selecting the branch

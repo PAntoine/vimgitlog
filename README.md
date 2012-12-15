@@ -1,7 +1,7 @@
 vimgitlog
 =========
 
-Version: 1.1.0
+Version: 1.2.0
 
 Git log and diff plugin for vim.
 
@@ -12,7 +12,13 @@ This is a simple Vim plugin that will bring up the history of a given file. It w
 in the window-pane on the left of the screen. If you hit enter it will diff that commit against the
 current revision loaded.
 
-In the log window \_\_gitlog\_\_ the two following commands work:
+In the log window \_\_gitlog\_\_ the following commands work:
+
+    o			opens the file. This will simply open the file in a new window.
+    s			starts a search and opens the search window.
+	<cr>		This will open the file and diff it against the window that was active when it was lauched.
+
+In the search window \_\_gitsearch\_\_ the two following commands work:
 
     o			opens the file. This will simply open the file in a new window.
 	<cr>		This will open the file and diff it against the window that was active when it was lauched.
@@ -36,7 +42,7 @@ And the should be it.
 TODO
 ----
 
-1.  It is not colour coded yet, it will be.
+1. Add the ability to find when a file was first added to the repository.
 
 Licence and Copyright
 ---------------------
