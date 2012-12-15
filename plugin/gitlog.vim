@@ -10,6 +10,7 @@
 "
 "			In the log window the two following commands work.
 "			  o   - will open the file.
+"			  s   - will search the selected revisions.
 "			 <cr> - will open the revision for diff'ing.
 "
 "			In the branch window it will use the following commands:
@@ -19,7 +20,7 @@
 "			It is that simple.
 " 
 "  Author : peterantoine
-"  version: 1.1.1
+"  version: 1.1.2
 "  Date   : 29/09/2012 14:42:03
 " ---------------------------------------------------------------------------------
 "					   Copyright (c) 2012 Peter Antoine
@@ -33,9 +34,14 @@
 "    1.1.0     PA     27.10.2012  Added functionality to the Branch window.
 "    1.1.1     PA     21.11.2012  Fixed issue with not finding history if the
 "                                 editor was not launched in the repository tree.
+"    1.1.2     PA     10.12.2012  Fixed broken plugin. Order of parameter setting
+"                                 caused by the last fix, broke the plugin. Also
+"                                 fixed problem with un-escaped branchname causing
+"                                 git to not return list of changes.
+"    1.2.0     PA     10.12.2012  Added searches.
 "																				}}}
 " PUBLIC FUNCTIONS
-" FUNCTION: GITLOG_GetHistory(filename)										"{{{
+" FUNCTION: GITLOG_GetHistory(filename)											"{{{
 "
 " This function will open the log window and load the history for the given file.
 " If the file does not exist within the given branch then then function will 
@@ -46,9 +52,7 @@
 "	filename	the filename to search for history for.
 "
 function! GITLOG_GetHistory(filename)
-		" have to get the files that it uses first
-	let s:repository_root = s:GITLOG_FindRespositoryRoot(a:filename)
-
+	" have to get the files that it uses first
 	if (s:repository_root == "")
 		return 0
 	else
@@ -75,7 +79,7 @@ function! GITLOG_GetHistory(filename)
 		endif
 	endif
 endfunction																		"}}}
-" FUNCITON:	GITLOG_DiffRevision()											{{{
+" FUNCITON:	GITLOG_DiffRevision()												{{{
 "
 " This function will open a revision for diff'ing. 
 " It will create a new window and diff the new window/buffer against the original
@@ -88,7 +92,7 @@ endfunction																		"}}}
 "	nothing
 "
 function! GITLOG_DiffRevision()
-	let commit = s:GITLOG_GetCommitHash()
+	let commit = s:GITLOG_GetCommitHash(line('.'))
 
 	if (commit != "")
 		silent execute "!git --git-dir=" . s:repository_root . ".git cat-file -e " . commit . ":" . s:revision_path 
@@ -113,7 +117,7 @@ endfunction																		"}}}
 "	nothing
 "
 function! GITLOG_OpenRevision()
-	let commit = s:GITLOG_GetCommitHash()
+	let commit = s:GITLOG_GetCommitHash(line('.'))
 
 	if (commit != "")
 	  silent execute "!git --git-dir=" . s:repository_root . ".git cat-file -e " . commit . ":" . s:revision_path 
@@ -179,10 +183,12 @@ endfunction																		"}}}
 "	nothing
 "
 function!	GITLOG_ToggleWindows()
-
 	if !exists("s:gitlog_loaded")
-		let s:gitlog_current_branch = GITLOG_GetBranch()
+		augroup GITLOG
+
 		let s:revision_file = expand('%:p')
+		let s:repository_root = s:GITLOG_FindRespositoryRoot(s:revision_file)
+		let s:gitlog_current_branch = GITLOG_GetBranch()
 
 		if (GITLOG_GetHistory(s:revision_file))
 			let s:gitlog_loaded = 1
@@ -190,6 +196,8 @@ function!	GITLOG_ToggleWindows()
 	else
 		unlet s:gitlog_loaded
 		call GITLOG_CloseWindows()
+		au! GITLOG
+		augroup! GITLOG
 	endif
 endfunction																		"}}}
 " FUNCTION: GITLOG_SwitchLocalBranch()											{{{
@@ -230,9 +238,9 @@ endfunction																		"}}}
 " returns:
 "	the 7 hex digits of the commit hash, else the empty string.
 "
-function! s:GITLOG_GetCommitHash()
-	let x =  getline(".")
-	
+function! s:GITLOG_GetCommitHash(required_line)
+	let x = getline(a:required_line)
+
 	if (stridx(x,"*") >= 0)
 		let commit = substitute(x,"^.*\\*\\s\\+\\(\\x\\x\\x\\x\\x\\x\\x\\) .\\+$","\\1","")
 	else
@@ -301,7 +309,10 @@ endfunction																	"}}}
 "
 function! s:GITLOG_MapLogBufferKeys()
 	map <buffer> <silent> <cr> :call GITLOG_DiffRevision()<cr>
+	map <buffer> <silent> s	  :call GITLOG_SearchCommits()<cr>
 	map <buffer> <silent> o	  :call GITLOG_OpenRevision()<cr>
+
+	au GITLOG BufLeave <buffer> call s:GITLOG_LeaveBuffer()
 endfunction																	"}}}
 " FUNCTION: GITLOG_OpenLogWindow()											{{{
 " 
@@ -338,7 +349,7 @@ function! s:GITLOG_OpenLogWindow(file_name)
 	" rev-list does not support the --git-dir flag, so have to cd into the directory.
 	exec 'cd' fnameescape(s:repository_root)
 	redir => gitdiff_history
-	silent execute "!git --git-dir=" . s:repository_root . ".git rev-list " . s:gitlog_current_branch . " --oneline --graph -- " . a:file_name
+	silent execute "!git --git-dir=" . s:repository_root . ".git rev-list " . shellescape(s:gitlog_current_branch,1) . " --oneline --graph -- " . a:file_name
 	redir END
 	cd -
 
@@ -515,5 +526,99 @@ function! GITLOG_GetBranch()
 	else
 		return ''
 	endif
+endfunction																	"}}}
+" FUNCTION: GITLOG_GetCommits()												{{{
+"
+" This function will get the list of commits that was/are selected in the commit
+" window.
+"
+" vars:
+"	none
+"
+" returns:
+"	nothing
+"
+function! s:GITLOG_GetCommits(line_first,line_last)
+
+	if (line('.') == a:line_first)
+		let start_line = a:line_first
+		let s:selected_commits = ''
+
+		while start_line <= a:line_last
+			let s:selected_commits = s:selected_commits . ' ' . s:GITLOG_GetCommitHash(start_line)
+			let start_line += 1
+		endwhile
+	endif
+
+endfunction																	"}}}
+" FUNCTION: GITLOG_DoSearch()												{{{
+"
+" This function will search the selected commits.
+"
+" vars:
+"	none
+"
+" returns:
+"	nothing
+"
+function! s:GITLOG_DoSearch()
+	if !empty(s:selected_commits)
+		let search_string = input("Search String: ","")
+
+		if !empty(search_string)
+			redir => search_result
+			silent execute "!git --git-dir=" . s:repository_root . ".git --no-pager grep -n -F " . search_string . s:selected_commits
+			redir END
+	
+			if v:shell_error
+			  echohl WarningMsg
+			  echomsg "The string could not be found"
+			  echohl Normal
+	  		else
+				" ok, we found some stuff
+				let search_result_list = split(substitute(search_result,'[\x00]',"","g"),"\x0d")
+
+				if !empty(search_result_list)
+					call remove(search_result_list,0)
+				endif
+
+				echo search_result
+			endif
+		endif
+	endif
+endfunction																	"}}}
+" FUNCTION: GITLOG_SearchCommits()											{{{
+"
+" This function will handle the search from the LOG window.
+"
+" vars:
+"	none
+"
+" returns:
+"	nothing
+"
+function! GITLOG_SearchCommits()
+	
+	if (line('.') == a:firstline)
+		call s:GITLOG_GetCommits(a:firstline,a:lastline)
+		call s:GITLOG_DoSearch()
+	endif
+endfunction																	"}}}
+" AUTOCMD FUNCTIONS
+" FUNCTION: GITLOG_LeaveBuffer()											{{{
+"
+" On leaving the buffer, get the commits that have been selected. This will
+" allow for the external search to be able to search the correct lines.
+"
+" vars:
+"	none
+"
+" returns:
+"	nothing
+"
+function! s:GITLOG_LeaveBuffer()
+
+	call s:GITLOG_GetCommits(a:firstline,a:lastline)
+
 endfunction																	"}}}
 

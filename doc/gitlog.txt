@@ -101,6 +101,18 @@ This will install GITLOG on the <f7> key.
 ==============================================================================
 5. History                                       *gitlog-history*
 
+  1.1.2: December 12, 2012
+         PA: Fixed broken plugin. Order of parameter setting caused by the last fix,
+                    broke the plugin. Also fixed problem with un-escaped branchname causing
+                        git to not return list of changes.
+
+  1.1.1: November 21, 2012
+         PA: Fixed issue with not finding history if the editor was not launched
+                    in the repository tree.
+
+  1.1.0: October 27, 2012:
+         PA: Added functionality to the branch window. Now selecting the branch
+
   1.1.0: October 27, 2012:
          PA: Added functionality to the branch window. Now selecting the branch
              will update the log window to reflect the commits in that branch.
