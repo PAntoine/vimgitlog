@@ -34,11 +34,16 @@
 "    1.1.0     PA     27.10.2012  Added functionality to the Branch window.
 "    1.1.1     PA     21.11.2012  Fixed issue with not finding history if the
 "                                 editor was not launched in the repository tree.
+<<<<<<< HEAD
 "    1.1.2     PA     10.12.2012  Fixed broken plugin. Order of parameter setting
 "                                 caused by the last fix, broke the plugin. Also
 "                                 fixed problem with un-escaped branchname causing
 "                                 git to not return list of changes.
 "    1.2.0     PA     10.12.2012  Added searches.
+=======
+"    1.1.2     pa     10.12.2012  Fixed broken plugin. Ordero of parameter setting
+"                                 caused by the last fix, broke the plugin.
+>>>>>>> 7c404e8b426fb84c67b5d0af1df878c714fe7146
 "																				}}}
 " PUBLIC FUNCTIONS
 " FUNCTION: GITLOG_GetHistory(filename)											"{{{
@@ -184,8 +189,11 @@ endfunction																		"}}}
 "
 function!	GITLOG_ToggleWindows()
 	if !exists("s:gitlog_loaded")
+<<<<<<< HEAD
 		augroup GITLOG
 
+=======
+>>>>>>> 7c404e8b426fb84c67b5d0af1df878c714fe7146
 		let s:revision_file = expand('%:p')
 		let s:repository_root = s:GITLOG_FindRespositoryRoot(s:revision_file)
 		let s:gitlog_current_branch = GITLOG_GetBranch()
