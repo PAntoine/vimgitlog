@@ -45,6 +45,9 @@
 "                                 fixed problem with un-escaped branchname causing
 "                                 git to not return list of changes.
 "    1.2.0     PA     10.12.2012  Added searches.
+"    1.3.0     PA     08.01.2013  Re-wrote file opens and git commands to use the
+"                                 system rather than the redir as this works on the
+"                                 console version where redir does not.
 "																				}}}
 " PUBLIC FUNCTIONS
 " FUNCTION: GITLOG_GetHistory(filename)											"{{{
@@ -417,13 +420,11 @@ function! s:GITLOG_OpenLogWindow(file_name)
 	" now get the file history for the window
 	" rev-list does not support the --git-dir flag, so have to cd into the directory.
 	exec 'cd' fnameescape(s:repository_root)
-	redir => gitdiff_history
-	silent execute "!git --git-dir=" . s:repository_root . ".git rev-list " . shellescape(s:gitlog_current_branch,1) . " --oneline --graph -- " . a:file_name
-	redir END
+    let run_command = 'git --git-dir=' . s:repository_root . ".git --no-pager rev-list " . shellescape(s:gitlog_current_branch,1) . " --oneline --graph -- " . a:file_name
+	let gitdiff_history = system(run_command)
 	cd -
 
-	let git_array = split(substitute(gitdiff_history,'[\x00]',"","g"),"\x0d")
-	call remove(git_array,0)
+	let git_array = split(gitdiff_history,'[\x00]')
 	call setline(1,[ 'branch: ' . s:gitlog_current_branch] + git_array)
 	
 	" set the keys on the Log window
@@ -477,10 +478,10 @@ function! s:GITLOG_OpenBranchWindow()
 	setlocal modifiable
 	
 	" now get the list of branches
-	redir => gitbranch_history
-	silent execute "!git --git-dir=" . s:repository_root . ".git branch -v"
-	redir END
-	let git_array = split(substitute(gitbranch_history,'[\x00]',"","g"),"\x0d")
+    let run_command = "git --git-dir=" . s:repository_root . ".git --no-pager branch -v"
+	let gitbranch_history = system(run_command)
+
+	let git_array = split(gitbranch_history,'[\x00]')
 
 	" set the current branch marker if it is not current real branch
 	if s:gitlog_branch_line != 0
@@ -490,7 +491,6 @@ function! s:GITLOG_OpenBranchWindow()
 		endif
 	endif
 
-	call remove(git_array,0)
 	call setline(1,git_array)
 	
 	" set the keys on the branch window
@@ -514,14 +514,12 @@ endfunction																"}}}
 "	nothing
 "
 function! s:GITLOG_LoadRevisionFile(revision)
-	redir => gitlog_file
-	silent execute "!git --git-dir=" . s:repository_root . ".git --no-pager show " . a:revision
-	redir END
+    let run_command = 'git --git-dir=" . s:repository_root . ".git --no-pager show " . a:revision
+	let gitlog_file = system(run_command)
 
 	" now write the captured text to the a new buffer - after removing
 	" the \x00's from the text and splitting into an array.
-	let git_array = split(substitute(gitlog_file,'[\x00]',"","g"),"\x0d")
-	call remove(git_array,0)
+	let git_array = split(gitlog_file,'[\x00]')
 	call setline(1,git_array)
 	setlocal buftype=nofile bufhidden=wipe nobuflisted nomodifiable noswapfile nowrap
 
@@ -567,14 +565,13 @@ function! s:GITLOG_OpenDiffWindow(commit,file_path,...)
 		diffthis
 		exe "silent rightbelow vnew " . buffname
 
-		redir => gitlog_file
-		silent execute "!git --git-dir=" . s:repository_root . ".git --no-pager show " . revision
-		redir END
-	
+        let run_command = "git --git-dir=" . s:repository_root . ".git --no-pager show " . revision
+        let gitlog_file = system(run_command)
+
+
 		" now write the captured text to the a new buffer - after removing
 		" the \x00's from the text and splitting into an array.
-		let git_array = split(substitute(gitlog_file,'[\x00]',"","g"),"\x0d")
-		call remove(git_array,0)
+	    let git_array = split(gitlog_file,'[\x00]')
 		call setline(1,git_array)
 		setlocal buftype=nofile bufhidden=wipe nobuflisted nomodifiable noswapfile nowrap
 		diffthis
@@ -609,14 +606,12 @@ function! s:GITLOG_OpenCodeWindow(commit,file_path)
 		let file_type = &filetype
 		exe "silent rightbelow vnew " . buffname
 
-		redir => gitlog_file
-		silent execute "!git --git-dir=" . s:repository_root . ".git --no-pager show " . revision
-		redir END
+        let run_command = "git --git-dir=" . s:repository_root . ".git --no-pager show " . revision
+        let gitlog_file = system(run_command)
 	
 		" now write the captured text to the a new buffer - after removing
 		" the \x00's from the text and splitting into an array.
-		let git_array = split(substitute(gitlog_file,'[\x00]',"","g"),"\x0d")
-		call remove(git_array,0)
+	    let git_array = split(gitlog_file,'[\x00]')
 		call setline(1,git_array)
 		setlocal buftype=nofile bufhidden=wipe nobuflisted nomodifiable noswapfile nowrap
 		exe "setlocal filetype=" . file_type
@@ -657,9 +652,8 @@ function! s:GITLOG_OpenSearchWindow()
 		let search_string = input("Search String: ","")
 
 		if !empty(search_string)
-			redir => search_result
-			silent execute "!git --git-dir=" . s:repository_root . ".git --no-pager grep -n -F " . search_string . s:selected_commits
-			redir END
+	        let run_command = "git --git-dir=" . s:repository_root . ".git --no-pager grep -n -F " . search_string . s:selected_commits
+    	    let search_result = system(run_command)
 	
 			if v:shell_error
 			  echohl WarningMsg
@@ -667,7 +661,8 @@ function! s:GITLOG_OpenSearchWindow()
 			  echohl Normal
 	  		else
 				" ok, we found some stuff - open the window
-				let search_result_list = split(substitute(search_result,'[\x00]',"","g"),"\x0d")
+	    		let search_result_list = split(search_result,'[\x00]')
+
 				if !empty(search_result_list)
 					if bufwinnr(bufnr("__gitsearch__")) != -1
 						" window already open - just go to it
@@ -688,13 +683,10 @@ function! s:GITLOG_OpenSearchWindow()
 					"need to change the window
 					setlocal modifiable
 
-					let search_result_list = split(substitute(search_result,'[\x00]',"","g"),"\x0d")
-					if !empty(search_result_list)
-						" delete the contents then add the search results
-						exe "% delete"
-						call remove(search_result_list,0)
-						call setline(1,search_result_list)
-					endif
+					" delete the contents then add the search results
+					exe "% delete"
+					call remove(search_result_list,0)
+					call setline(1,search_result_list)
 
 					" Map the keys
 					call s:GITLOG_MapSearchBufferKeys()
