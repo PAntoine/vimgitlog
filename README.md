@@ -1,7 +1,7 @@
 vimgitlog
 =========
 
-Version: 1.2.0
+Version: 1.3.0
 
 Git log and diff plugin for vim.
 

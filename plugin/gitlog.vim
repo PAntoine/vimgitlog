@@ -26,7 +26,7 @@
 "			It is that simple.
 " 
 "  Author : peterantoine
-"  version: 1.1.2
+"  version: 1.3.0
 "  Date   : 29/09/2012 14:42:03
 " ---------------------------------------------------------------------------------
 "					   Copyright (c) 2012 Peter Antoine
