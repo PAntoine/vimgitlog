@@ -18,10 +18,11 @@ endif
 let b:current_syntax = "gl"
 
 "highlight the branch window
-syn region	glBranchLine		start="^  " start="^\* " start="^> " skip=" [0-9A-Za-z\/\._\-#]\+\s\+ \x\x\x\x\x\x\x " end="$"		contains=glCurrentBranchName,glSelectBranchName,glBranchHash,glLogMessage,@NoSpell keepend 
+syn region	glBranchLine		start="^  " start="^[* |]\+ " start="^> " skip=" [0-9A-Za-z\/\._\-#]\+\s\+ \x\x\x\x\x\x\x " end="$"		contains=glCruft,glCurrentBranchName,glSelectBranchName,glBranchHash,glLogMessage,@NoSpell keepend 
 syn match	glCurrentBranchName	"^\* [0-9A-Za-z\/\._\-#]\+\s\+"hs=s+2	contained containedin=glBranchLine nextgroup=glBranchHash
 syn match	glSelectBranchName	"^> [0-9A-Za-z\/\._\-#]\+\s\+"hs=s+2	contained containedin=glBranchLine nextgroup=glBranchHash
 syn match	glBranchName		"^  [0-9A-Za-z\/\._\-#]\+\s\+"hs=s+2	contained containedin=glBranchLine nextgroup=glBranchHash
+syn match	glCruft				"^[* |]\+ "								contained nextgroup=glBranchHash containedin=glBranchLine
 syn match	glBranchHash		"\x\x\x\x\x\x\x"						contained contains=@NoSpell containedin=glBranchLine nextgroup=glBranchMessage
 
 hi link glBranchHash		Character
@@ -53,6 +54,7 @@ syn keyword	glBranch			contained branch
 syn match	glBranchName		": [0-9A-Za-z\/\._\-#]\+"			contained containedin=glBranchHeader
 
 hi link glLog				Normal
+hi link glCruft				Normal
 hi link glLogHash			Character
 hi link glBranch			Identifier
 hi link glBranchName		Special

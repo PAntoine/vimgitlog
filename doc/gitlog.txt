@@ -1,4 +1,4 @@
-*gitlog.txt*  For Vim version 7.0 Last change: 2012 December 14
+*gitlog.txt*  For Vim version 7.3
 
                                            
         ,----.   ,--.  ,--.  ,--.                                          ~
@@ -10,8 +10,8 @@
 
 
 Author:	  Peter Antoine
-Date:     December 14, 2012
-Version:  1.3.0
+Date:     March 8, 2013
+Version:  1.3.1
 HomePage: https://github.com/PAntoine/vimgitlog
 
 
@@ -140,6 +140,10 @@ This will install GITLOG on the <f7> key.
 
 ==============================================================================
 5. History                                       *gitlog-history*
+  1.3.1: March 8, 2013
+         PA: Fixed problem with marge branches not being diff'ed and fixed syntax
+		 highlighting to handle the branches.
+
   1.3.0: January 8, 2013
   		 PA: Re-wrote the way that the files were read so it works in console mode.
 

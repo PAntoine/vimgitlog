@@ -26,7 +26,7 @@
 "			It is that simple.
 " 
 "  Author : peterantoine
-"  version: 1.3.0
+"  version: 1.3.1
 "  Date   : 29/09/2012 14:42:03
 " ---------------------------------------------------------------------------------
 "					   Copyright (c) 2012 Peter Antoine
@@ -48,6 +48,7 @@
 "    1.3.0     PA     08.01.2013  Re-wrote file opens and git commands to use the
 "                                 system rather than the redir as this works on the
 "                                 console version where redir does not.
+"    1.3.1     PA     08.03.2013  Fixed regex that was used for branch detection.
 "																				}}}
 " PUBLIC FUNCTIONS
 " FUNCTION: GITLOG_GetHistory(filename)											"{{{
@@ -312,7 +313,7 @@ function! s:GITLOG_GetCommitHash(required_line)
 	let x = getline(a:required_line)
 
 	if (stridx(x,"*") >= 0)
-		let commit = substitute(x,"^.*\\*\\s\\+\\(\\x\\x\\x\\x\\x\\x\\x\\) .\\+$","\\1","")
+		let commit = substitute(x,"^[* |]\\+\\s\\+\\(\\x\\x\\x\\x\\x\\x\\x\\) .\\+$","\\1","")
 	else
 		let commit = ""
 	endif
