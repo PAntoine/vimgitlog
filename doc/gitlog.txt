@@ -11,7 +11,7 @@
 
 Author:	  Peter Antoine
 Date:     March 26, 2013
-Version:  2.0.0
+Version:  2.0.2
 HomePage: https://github.com/PAntoine/vimgitlog
 
 
@@ -222,6 +222,9 @@ This will install GITLOG on the <f7> key.
 
 ==============================================================================
 7. History                                       *gitlog-history*
+  2.0.2: March 26, 2013
+         PA: Released wrong version and broke toggle and syntax.
+
   2.0.0: March 26, 2013
          PA: Added the Repository History Tree.
 		 PA: Also fixed minor issue with the branch selection being wrong.

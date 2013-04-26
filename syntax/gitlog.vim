@@ -44,9 +44,10 @@ hi link glSearchLineNumber		LineNr
 hi link glSearchMessage			Comment
 
 "highlight the log window
-syn region	glLog				start="^\* \x\x\x\x\x\x\x\s[0-9A-Za-z\/\._\-#@]" end="$"	contains=glLogHash,glLogMessage,@NoSpell keepend
+syn region	glLog				start="^[| ]*\*[| ]* \x\x\x\x\x\x\x\s[0-9A-Za-z\/\._\-#@]" end="$"	contains=glLogHash,glCruft,glLogMessage,@NoSpell keepend
 syn match	glBranchMessage		"\s[0-9A-Za-z\/\._\-#@]\+"			contained containedin=glLog,glBranchLine
 syn match	glLogHash			" \x\x\x\x\x\x\x"					contained containedin=glLog nextgroup=glBranchMessage
+syn match	glCruft				"^[* |]\+ "							contained nextgroup=glBranchHash containedin=glLog
 
 syn region	glBranchHeader		start="^branch:" end="$"			keepend contains=glBranch,glBranchName
 syn keyword	glBranch			contained branch

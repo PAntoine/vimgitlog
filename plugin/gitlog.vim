@@ -317,13 +317,13 @@ function!	GITLOG_ToggleWindows(...)
 	if !exists("s:gitlog_loaded") || (a:0 == 1 && a:1 != s:gitlog_loaded)
 		augroup GITLOG
 		
+		let s:repository_root = s:GITLOG_FindRespositoryRoot(s:revision_file)
 		let fend = expand('%:t')
 
 		if 	(fend != "__gitlog__" && fend != "__gitbranch__" && fend != "__gitsearch__")
 		\   && substitute(expand('%:p'),"\\x\\x\\x\\x\\x\\x\\x:.\\+$\\|[0-9A-Za-z\/\._#]\\+:.\\+$","correct_buffer_to_close","") != "correct_buffer_to_close"
 			" don't remember it if it is the log window (we could be toggling)
 			let s:revision_file = expand('%:p')
-			let s:repository_root = s:GITLOG_FindRespositoryRoot(s:revision_file)
 			let s:gitlog_current_branch = GITLOG_GetBranch()
 		endif
 
