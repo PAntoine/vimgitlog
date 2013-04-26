@@ -22,7 +22,7 @@ syn region	glBranchLine		start="^  [a-zA-Z]" start="^[>\*] [a-zA-Z]" end="$"		co
 syn match	glCurrentBranchName	"^\* [0-9A-Za-z\/\._\-#]\+\s\+"hs=s+2	contained containedin=glBranchLine nextgroup=glBranchHash
 syn match	glSelectBranchName	"^> [0-9A-Za-z\/\._\-#]\+\s\+"hs=s+2	contained containedin=glBranchLine nextgroup=glBranchHash
 syn match	glBranchName		"^  [0-9A-Za-z\/\._\-#]\+\s\+"hs=s+2	contained containedin=glBranchLine nextgroup=glBranchHash
-syn match	glBranchHash		"\x\x\x\x\x\x\x"					contained contains=@NoSpell containedin=glBranchLine nextgroup=glBranchMessage
+syn match	glBranchHash		"\x\x\x\x\x\x\x"						contained contains=@NoSpell containedin=glBranchLine nextgroup=glBranchMessage
 
 hi link glBranchHash		Character
 hi link glCurrentBranchName	Identifier
@@ -47,7 +47,6 @@ hi link glSearchMessage			Comment
 syn region	glLog				start="^[| ]*\*[| ]* \x\x\x\x\x\x\x\s[0-9A-Za-z\/\._\-#@]" end="$"	contains=glLogHash,glCruft,glLogMessage,@NoSpell keepend
 syn match	glBranchMessage		"\s[0-9A-Za-z\/\._\-#@]\+"			contained containedin=glLog,glBranchLine
 syn match	glLogHash			" \x\x\x\x\x\x\x"					contained containedin=glLog nextgroup=glBranchMessage
-syn match	glCruft				"^[* |]\+ "							contained nextgroup=glBranchHash containedin=glLog
 
 syn region	glBranchHeader		start="^branch:" end="$"			keepend contains=glBranch,glBranchName
 syn keyword	glBranch			contained branch
