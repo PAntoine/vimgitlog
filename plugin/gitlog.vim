@@ -88,23 +88,21 @@ function! GITLOG_GetHistory(filename)
 	if (s:repository_root == "")
 		return 0
 	else
+		let s:revision_path = substitute(a:filename,s:repository_root,"","")
+		let s:original_window = bufwinnr("%")
+
 		if (a:filename == "")
-			echohl WarningMsg
-			echomsg "No file in the buffer, can't get history"
-			echohl Normal
-			return 0
+			return s:GITLOG_OpenTreeWindow()
 		else
-			let s:revision_path = substitute(a:filename,s:repository_root,"","")
-			let s:original_window = bufwinnr("%")
-			
 			"TODO: check for valid version should be here
 
 			silent execute "!git --git-dir=" . s:repository_root . ".git cat-file -e " . "HEAD:" . s:revision_path
 			if v:shell_error
+				let result = s:GITLOG_OpenTreeWindow()
 				echohl WarningMsg
 				echomsg "File " . s:gitlog_current_branch . ":" . s:revision_path . " is not tracked (test:" . a:filename . ")"
 				echohl Normal
-				return 0
+				return result
 			else
 				call s:GITLOG_OpenLogWindow(a:filename)
 				call s:GITLOG_OpenBranchWindow()
