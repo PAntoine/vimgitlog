@@ -12,24 +12,23 @@
 
 " Quit when a syntax file was already loaded
 if exists("b:current_syntax")
-  finish
+	finish
 endif
 
 let b:current_syntax = "gl"
 
 "highlight the branch window
-syn region	glBranchLine		start="^  " start="^[* |]\+ " start="^> " skip=" [0-9A-Za-z\/\._\-#]\+\s\+ \x\x\x\x\x\x\x " end="$"		contains=glCruft,glCurrentBranchName,glSelectBranchName,glBranchHash,glLogMessage,@NoSpell keepend 
+syn region	glBranchLine		start="^  [a-zA-Z]" start="^[>\*] [a-zA-Z]" end="$"		contains=glCruft,glCurrentBranchName,glSelectBranchName,glBranchHash,glLogMessage,@NoSpell keepend 
 syn match	glCurrentBranchName	"^\* [0-9A-Za-z\/\._\-#]\+\s\+"hs=s+2	contained containedin=glBranchLine nextgroup=glBranchHash
 syn match	glSelectBranchName	"^> [0-9A-Za-z\/\._\-#]\+\s\+"hs=s+2	contained containedin=glBranchLine nextgroup=glBranchHash
 syn match	glBranchName		"^  [0-9A-Za-z\/\._\-#]\+\s\+"hs=s+2	contained containedin=glBranchLine nextgroup=glBranchHash
-syn match	glCruft				"^[* |]\+ "								contained nextgroup=glBranchHash containedin=glBranchLine
-syn match	glBranchHash		"\x\x\x\x\x\x\x"						contained contains=@NoSpell containedin=glBranchLine nextgroup=glBranchMessage
+syn match	glBranchHash		"\x\x\x\x\x\x\x"					contained contains=@NoSpell containedin=glBranchLine nextgroup=glBranchMessage
 
 hi link glBranchHash		Character
-hi link glCurrentBranchName	Constant
+hi link glCurrentBranchName	Identifier
 hi link glSelectBranchName	WarningMsg
 hi link glBranchName		Comment
-hi link glBranchLine		Comment
+hi link glBranchLine		String
 
 " highlighting for for the search window
 syn region	glSearch			start="^\x\x\x\x\x\x\x:" end="$"		keepend contains=glSearchHash,glSearchFileName,glSearchLineNumber,glSearchMessage,@NoSpell
@@ -60,4 +59,23 @@ hi link glBranch			Identifier
 hi link glBranchName		Special
 hi link glBranchMessage		Comment
 
+" Tree Window
+syn region	glTreeLine		start="^\s*[▸▾>v✓+✗x•\-]" end="$"	keepend contains=glMarker,glFileName,@NoSpell
+syn region	glTreeHeader	start="^commit:" end="$"	keepend contains=glBranch,glBranchName,glLogHash
+
+syn match	glMarker		"▸ "					contained containedin=glTreeLine nextgroup=glFileName
+syn match	glMarker		"▾ "					contained containedin=glTreeLine nextgroup=glFileName
+syn match	glMarker		"> "					contained containedin=glTreeLine nextgroup=glFileName
+syn match	glMarker		"v "					contained containedin=glTreeLine nextgroup=glFileName
+syn match 	glStateNew		"[✓+]"					contained containedin=glTreeLine nextgroup=glFileName
+syn match 	glStateDeleted	"[✗x]"					contained containedin=glTreeLine nextgroup=glFileName
+syn match 	glStateChanged	"[•\-]"					contained containedin=glTreeLine nextgroup=glFileName
+syn match	glFileName		"[0-9A-Za-z\._#\-]\+"	contained containedin=glTreeLine contains=@NoSpell
+
+hi link glMarker			Normal
+hi link	glFileName			String
+hi 		glStateNew			term=bold ctermfg=Green		guifg=Green
+hi 		glStateDeleted		term=bold ctermfg=Red		guifg=Red
+hi 		glStateChanged		term=bold ctermfg=Yellow	guifg=Yellow
+hi link	glStateSame			String
 
