@@ -32,7 +32,7 @@
 "			It is that simple.
 " 
 "  Author : peterantoine
-"  version: 2.0.0
+"  version: 2.1.0
 "  Date   : 29/09/2012 14:42:03
 " ---------------------------------------------------------------------------------
 "					   Copyright (c) 2012 Peter Antoine
@@ -42,6 +42,7 @@
 "
 " GLOBAL INITIALISERS
 "																				{{{
+
 let s:tree_root = 0
 let s:current_root = 0
 let s:directory_list = [[]]
@@ -49,6 +50,7 @@ let s:gitlog_current_commit = 'HEAD'
 let s:revision_file = ''
 let s:last_diff_path = ''
 let s:diff_buffer_list = []
+let s:gitlog_last_state = g:GITLOG_default_mode
 
 " simbols used in the list window
 if !exists("g:GITLOG_DontUseUnicode") || g:GITLOG_DontUseUnicode == 0
@@ -295,7 +297,7 @@ endfunction																		"}}}
 function!	GITLOG_FlipWindows()
 	if !exists("s:gitlog_loaded")
 		" load it on
-		call GITLOG_ToggleWindows(g:GITLOG_default_mode)
+		call GITLOG_ToggleWindows(s:gitlog_last_state)
 	elseif s:gitlog_loaded == 1
 		call GITLOG_ToggleWindows(2)
 	else
@@ -339,6 +341,8 @@ function!	GITLOG_ToggleWindows(...)
 				let s:gitlog_loaded = 2
 			endif
 		endif
+
+		let s:gitlog_last_state = s:gitlog_loaded
 	else
 		unlet s:gitlog_loaded
 		call GITLOG_CloseWindows()
@@ -597,6 +601,8 @@ function! s:GITLOG_OpenTreeWindow()
 	map <buffer> <silent> <cr> :call GITLOG_ActionListWindow(2)<cr>		" revision version of the file
 	map <buffer> <silent> l    :call GITLOG_ActionListWindow(0)<cr>		" open local version of the file
 	map <buffer> <silent> d    :call GITLOG_ActionListWindow(1)<cr>		" diff the local with the repository
+	map <buffer> <silent> r    :call GITLOG_ActionListWindow(3)<cr>		" refresh the node
+	map <buffer> <silent> R    :call GITLOG_ActionListWindow(4)<cr>		" refresh the root node
 
 	setlocal nomodifiable
 
@@ -987,12 +993,20 @@ endfunction																	"}}}
 "	nothing
 "
 function! GITLOG_GetBranch()
+	let bname = ''
 	let branch = system("git --git-dir=" . s:repository_root . ".git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* //'")
+	
 	if branch != ''
-		return substitute(branch, '\n', '', 'g')
-	else
-		return ''
+		let bname = substitute(branch, '\n', '', 'g')
+
+		" if on a detached head then use he commit hash as the branch number
+		if bname == "(no branch)"
+			let run_command = 'git --git-dir=' . s:repository_root . '.git rev-list --branches -1 --abbrev-commit'
+			let bname = system(run_command)
+		endif
 	endif
+
+	return bname
 endfunction																	"}}}
 " FUNCTION: GITLOG_GetCommits()												{{{
 "
@@ -1058,7 +1072,12 @@ function! GITLOG_MakeDirectory(path_name, parent_id)
 
 	" get the current state of the working directory
 	let current_dir = split(expand(a:path_name . '*'))
-	call map(current_dir,'fnamemodify(fnameescape(v:val),":t")')
+	
+	if current_dir == [ a:path_name . "*" ]
+		let current_dir = []
+	else
+		call map(current_dir,'fnamemodify(fnameescape(v:val),":t")')
+	endif
 
 	" ok, we have a string with the contents of the directory
     let search_result_list = split(search_result,'[\x00]')
@@ -1157,7 +1176,7 @@ function! s:GITLOG_UpdateTreeWindow(output, directory, id, level)
 
 			else
 				" Ok, file exists so need to check it's status
-					let run_command = "git --no-pager diff --quiet " . s:gitlog_current_commit . " -- " . a:directory . item.name
+				let run_command = "git --no-pager diff --quiet " . s:gitlog_current_commit . " -- " . a:directory . item.name
 				call system(run_command)
 
 				if v:shell_error
@@ -1207,6 +1226,28 @@ function! s:GITLOG_FindListItem(current_id,line_number)
 
 	return result
 endfunction																    "}}}
+" FUNCTION: GITLOG_DeleteTreeNode()											{{{
+" 
+" This function will delete the tree node. It will also delete all the child
+" nodes from the given node.
+"
+" vars:
+"	id	The id of the tree node to be removed.
+"
+" returns:
+"	nothing
+"
+function! s:GITLOG_DeleteTreeNode(id)
+	for item in s:directory_list[a:id]
+		if item.type == 'tree'
+			call s:GITLOG_DeleteTreeNode(item.child)
+		endif
+	endfor
+
+	" now delete the reference
+	let s:directory_list[a:id] = []
+
+endfunction																    "}}}
 " FUNCTION: GITLOG_ActionListWindow()										{{{
 " 
 " This function will take action on a line in the buffer.
@@ -1228,21 +1269,45 @@ function! GITLOG_ActionListWindow(command)
 	let s:found_path = ''
 	let found_item = s:GITLOG_FindListItem(s:current_root,line("."))
 
-	if (found_item != {})
+	if a:command == 4
+		" refresh the root directory - just throw everything away
+		let s:directory_list = [[]]
+		let s:tree_root = GITLOG_MakeDirectory(s:repository_root,0)
+		let s:current_root = s:tree_root
+		
+		" now update the window
+		setlocal modifiable
+		call setline(1,s:GITLOG_UpdateTreeWindow([ 'commit: ' . s:gitlog_current_commit ], s:repository_root,s:current_root,''))
+		setlocal nomodifiable
+	
+	elseif (found_item != {})
 		if found_item.type == 'tree'
-			if found_item.status == 'open'
-				let found_item.status = 'closed'
+			" refresh the tree
+			if a:command == 3
+				let old_state = found_item.status
+				" first remove all the items currently in the node down
+				call s:GITLOG_DeleteTreeNode(found_item.child)
+
+				" now re-create the item
+				let found_item.child = GITLOG_MakeDirectory(s:found_path . found_item.name . '/', found_item.parent)
+
+				" set the state for the item
+				let found_item.status = old_state 
 			else
-				let found_item.status = 'open'
+				if found_item.status == 'open'
+					let found_item.status = 'closed'
+				else
+					let found_item.status = 'open'
 
-				if found_item.child == 0
-					if s:found_path == ''
-						let new_path = found_item.name . '/'
-					else
-						let new_path = s:found_path . found_item.name . '/'
+					if found_item.child == 0
+						if s:found_path == ''
+							let new_path = found_item.name . '/'
+						else
+							let new_path = s:found_path . found_item.name . '/'
+						endif
+
+						let found_item.child = GITLOG_MakeDirectory(new_path, found_item.parent)
 					endif
-
-					let found_item.child = GITLOG_MakeDirectory(new_path, found_item.parent)
 				endif
 			endif
 
@@ -1251,7 +1316,7 @@ function! GITLOG_ActionListWindow(command)
 			" get the local filename
 			let file_name = s:found_path . found_item.name
 	
-			if a:command != 1 && found_item.marker != s:GITLOG_Deleted
+			if a:command == 0 || found_item.marker == s:GITLOG_Added || found_item.marker == s:GITLOG_Same
 				" Ok, open the local version of the file
 				if winnr("$") == 1
 					" only the log window open, so create a new window
@@ -1265,7 +1330,6 @@ function! GITLOG_ActionListWindow(command)
 					" need to load the file, in the last window used
 					exe "silent " . winnr("$") . "wincmd w"
 					silent exe "edit " . file_name
-
 				endif
 
 			elseif a:command == 1
@@ -1285,7 +1349,7 @@ function! GITLOG_ActionListWindow(command)
 				call s:GITLOG_OpenDiffWindow(s:gitlog_current_commit,file_name,file_name)
 			else
 				" Ok, open the version in the repository
-					let buffer_name = s:gitlog_current_commit . ':' . file_name
+				let buffer_name = s:gitlog_current_commit . ':' . file_name
 
 				if bufwinnr(bufnr(buffer_name)) != -1
 					" Ok, it's currently in a window
@@ -1299,7 +1363,7 @@ function! GITLOG_ActionListWindow(command)
 
 					if (bufnr(buffer_name) != -1)
 						" there exists a buffer with stuff in
-						silent exe "buffer " . s:buf_number
+						silent exe "buffer " . bufnr(buffer_name)
 					else
 						" create a new buffer - and make sure it is empty
 						let s:buf_number = bufnr(buffer_name,1)

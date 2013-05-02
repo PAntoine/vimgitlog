@@ -11,7 +11,7 @@
 
 Author:	  Peter Antoine
 Date:     March 26, 2013
-Version:  2.0.2
+Version:  2.1.0
 HomePage: https://github.com/PAntoine/vimgitlog
 
 
@@ -208,6 +208,12 @@ branch that the commit is on, then find the commit that you are interested in.
 Goto the line it is on and press 't'. This will switch to the tree view at the
 specific branch that is required.
 
+5.3 Refreshing the tree
+
+If files change on the file-system the tree can be refreshed by pressing the 'r'
+key. This will cause the current directory under the cursor to be refreshed. It
+will close any directories that have been opened. 
+
 ==============================================================================
 6. Mapping GitLog Functions                      	*gitlog-mapping*
 
@@ -222,6 +228,10 @@ This will install GITLOG on the <f7> key.
 
 ==============================================================================
 7. History                                       *gitlog-history*
+  2.1.0: March 29, 2013
+         PA: Fixed empty directory issue.
+		 PA: Added 'refresh' functions for tree.
+
   2.0.2: March 26, 2013
          PA: Released wrong version and broke toggle and syntax.
 

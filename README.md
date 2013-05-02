@@ -1,7 +1,7 @@
 vimgitlog
 =========
 
-Version: 2.0.2
+Version: 2.1.0
 
 Git log and diff plugin for vim.
 
@@ -23,6 +23,8 @@ In the tree window \_\_gitlog\_\_ the following commands work:
 
     l			opens the local version of the file, if it exists.
     d			diff's the tree view of the file against the local version.
+	r			refreshes the tree element that it is on.
+	R			refeshes the root directory.
 	<cr>		opens the respository version of the file, if it exists.
 
 In the search window \_\_gitsearch\_\_ the two following commands work:
@@ -60,14 +62,9 @@ screen layout when this is done.
 
 - Submodules.  
 
-These are not handled at the moment. I am not sure how to handle these so for the moment they are just
+These are not handled at the moment. I am not sure how to handle these. So for the moment they are just
 being ignored. It is the same with repos within repos. These will be handled when I know what behaviour
 I want GitLog to follow.
-
-TODO
-----
-
-1. Add the ability to find when (what revision) a file was first added to the repository.
 
 Licence and Copyright
 ---------------------
