@@ -50,6 +50,11 @@ let s:gitlog_current_commit = 'HEAD'
 let s:revision_file = ''
 let s:last_diff_path = ''
 let s:diff_buffer_list = []
+
+if !(exists("g:GITLOG_default_mode"))
+	let g:GITLOG_default_mode = 1
+endif
+
 let s:gitlog_last_state = g:GITLOG_default_mode
 
 " simbols used in the list window
