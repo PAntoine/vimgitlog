@@ -10,8 +10,8 @@
 
 
 Author:	  Peter Antoine
-Date:     March 26, 2013
-Version:  2.1.0
+Date:     May 21, 2013
+Version:  2.1.2
 HomePage: https://github.com/PAntoine/vimgitlog
 
 
@@ -228,6 +228,14 @@ This will install GITLOG on the <f7> key.
 
 ==============================================================================
 7. History                                       *gitlog-history*
+  2.1.2: May 21, 2013
+         PA: Fixed tree open.
+		 PA: Fixed being able to open in any default mode.
+		 PA: Made open tree view a bit better.
+
+  2.1.1: May 03, 2013
+         PA: Fixed silly start-up issue.
+
   2.1.0: March 29, 2013
          PA: Fixed empty directory issue.
 		 PA: Added 'refresh' functions for tree.

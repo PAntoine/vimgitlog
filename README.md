@@ -1,7 +1,7 @@
 vimgitlog
 =========
 
-Version: 2.1.0
+Version: 2.1.2
 
 Git log and diff plugin for vim.
 
@@ -44,8 +44,9 @@ Simply copy the contents of the plugin directory to the plugin directory in your
 
 You will need to map the toggle function to use it.
 
-    map <silent> <f7>   :call GITLOG_FilpWindows()<cr>
-    map <silent> <c-f7> :call GITLOG_ToggleWindows()<cr>
+	let g:GITLOG_default_mode = 2
+	map <silent> <f7> :call GITLOG_ToggleWindows()<cr>
+	map <silent> <c-f7> :call GITLOG_FlipWindows()<cr>
 
 And the should be it.
 

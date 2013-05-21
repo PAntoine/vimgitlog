@@ -42,7 +42,6 @@
 "
 " GLOBAL INITIALISERS
 "																				{{{
-
 let s:tree_root = 0
 let s:current_root = 0
 let s:directory_list = [[]]
@@ -74,9 +73,6 @@ else
 	let s:GITLOG_Open		= 'v '
 endif
 
-if !exists("g:GITLOG_default_mode")
-	let g:GITLOG_default_mode = 1
-endif
 "
 "																				}}}
 " PUBLIC FUNCTIONS
@@ -300,6 +296,7 @@ endfunction																		"}}}
 "	nothing
 "
 function!	GITLOG_FlipWindows()
+	echo s:gitlog_last_state
 	if !exists("s:gitlog_loaded")
 		" load it on
 		call GITLOG_ToggleWindows(s:gitlog_last_state)
@@ -342,6 +339,12 @@ function!	GITLOG_ToggleWindows(...)
 				let s:gitlog_loaded = 1
 			endif
 		else
+			if s:revision_file != ""
+				let s:revision_path = substitute(s:revision_file,s:repository_root,"","")
+			else
+				let s:revision_path = ''
+			endif
+
 			if s:GITLOG_OpenTreeWindow()
 				let s:gitlog_loaded = 2
 			endif
@@ -505,20 +508,9 @@ function! s:GITLOG_OpenTreeToFile(file_path)
 	endif
 
 	if (len(components) > 1)
-		let new_path = '.'
+		let new_path = './'
 		for component in components
 			let found = 0
-			let new_path = new_path . "/" . component
-			
-			" open the sub-directory if we need too
-			if found_item != {} && curent_directory == 0 && found_item.type == 'tree'
-				let found_item.child = GITLOG_MakeDirectory(new_path, found_item.parent)
-				let curent_directory = found_item.child
-
-				if curent_directory == 0
-					break
-				endif
-			endif
 
 			" now search the directory
 			for item in s:directory_list[curent_directory]
@@ -535,6 +527,18 @@ function! s:GITLOG_OpenTreeToFile(file_path)
 					break
 				endif
 			endfor
+
+			let new_path = new_path . component . "/" 
+
+			" open the sub-directory if we need too
+			if found_item != {} && curent_directory == 0 && found_item.type == 'tree'
+				let found_item.child = GITLOG_MakeDirectory(new_path, found_item.parent)
+				let curent_directory = found_item.child
+
+				if curent_directory == 0
+					break
+				endif
+			endif
 
 			" did we find it?
 			if found == 0
@@ -599,6 +603,7 @@ function! s:GITLOG_OpenTreeWindow()
 
 	if found_item != {}
 		call setpos('.',[0,found_item.lnum,0,0])
+		exe "normal zz"
 	endif
 
 	" set the keys on the tree window
@@ -1067,7 +1072,7 @@ endfunction																	"}}}
 "	nothing
 "
 function! GITLOG_MakeDirectory(path_name, parent_id)
-		let run_command = "git --git-dir=" . s:repository_root . ".git --no-pager ls-tree " . s:gitlog_current_commit . " " . a:path_name . " --abbrev"
+	let run_command = "git --git-dir=" . s:repository_root . ".git --no-pager ls-tree " . s:gitlog_current_commit . " " . a:path_name . " --abbrev"
     let search_result = system(run_command)
 
 	if v:shell_error
