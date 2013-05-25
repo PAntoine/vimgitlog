@@ -10,8 +10,8 @@
 
 
 Author:	  Peter Antoine
-Date:     May 21, 2013
-Version:  2.1.2
+Date:     May 25, 2013
+Version:  3.0.0
 HomePage: https://github.com/PAntoine/vimgitlog
 
 
@@ -81,13 +81,37 @@ The '*' in the branch window represents the current branch that the repository
 is on. GitLog does not change this. Internally it may list other branches but
 it does not change the branch in the repository.
 
-GitLog, does not support many commands. If you press <cr> within the log window
-then the revision matching the commit will be diff'ed against the file that is
-in the main window. If 'c' is pressed then the file will be opened in a window
-alongside the file.
+Gitlog supports the following keys in the Log window:
 
-In the branch window <cr> will change the log window to list the commits in
-that branch. It will NOT change the branch that the repository is in.
+Diff Revision: <cr> or 'd'
+
+This will diff the revision that is under the cursor. It will also set the
+current revision to this commit. This means that if you switch to the tree
+window then the view will be of this commit.
+
+Search Commits: 's'
+
+This key will cause the repository to be searched. It will ask you for the
+string that you want to search for. See |gitlog-searching|.
+
+Open Revision: 'o'
+
+This key will cause the revision file to be opened. The commit version of
+the file will be opened.
+
+Open Revision Tree: 't'
+
+This key will cause the revision tree to be opened at this commit.
+
+Close Diff Buffer: <c-d>
+
+Pressing these keys will cause the any diff windows that are open to close.
+
+Reset Commit: <c-h>
+
+This will reset the commit to HEAD. After some of the above commands the 
+commit will change. 
+
 
 ==============================================================================
 4. Git History Searching								*gitlog-searching*
@@ -201,14 +225,50 @@ diff the two files.
 Files that are the same will be unmarked and pressing <cr> will call the version
 that is residing on the local file system.
 
-5.2 Selecting a Commit Tree
+5.2. Window Commands
+
+Open Repository Version: <cr>
+
+This opens the local version of the file.
+
+Open Local Revision: 'l'
+
+This key will cause the revision file to be opened. The version on disk will
+be opened if it exists.
+
+Diff Version: 'd'
+
+This will diff the revision that is under the cursor.
+
+Open History: 'h'
+
+This will open the history window for this file.
+
+Refresh Node: 'r'
+
+This will refresh the node.
+
+Refresh Tree: 'R'
+
+This will refresh the whole tree.
+
+Close Diff Buffer: <c-d>
+
+Pressing these keys will cause the any diff windows that are open to close.
+
+Reset Commit: <c-h>
+
+This will reset the commit to HEAD. After some of the above commands the 
+commit will change. 
+
+5.3 Selecting a Commit Tree
 
 If you want to see the tree for any known commit. Goto the Log window select the
 branch that the commit is on, then find the commit that you are interested in.
 Goto the line it is on and press 't'. This will switch to the tree view at the
 specific branch that is required.
 
-5.3 Refreshing the tree
+5.4 Refreshing the tree
 
 If files change on the file-system the tree can be refreshed by pressing the 'r'
 key. This will cause the current directory under the cursor to be refreshed. It
@@ -228,6 +288,9 @@ This will install GITLOG on the <f7> key.
 
 ==============================================================================
 7. History                                       *gitlog-history*
+  3.0.0: May 25, 2013
+         PA: Added support for submodules.
+
   2.1.2: May 21, 2013
          PA: Fixed tree open.
 		 PA: Fixed being able to open in any default mode.
