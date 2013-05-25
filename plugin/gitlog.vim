@@ -266,6 +266,9 @@ endfunction																		"}}}
 "	nothing
 "
 function! GITLOG_CloseWindows()
+	" close all the diff windows
+	call GITLOG_CloseDiffBuffers()
+
 	"close the search window
 	if bufwinnr(bufnr("__gitsearch__")) != -1
 		exe "bwipeout __gitsearch__"
@@ -280,9 +283,6 @@ function! GITLOG_CloseWindows()
 	if bufwinnr(bufnr("__gitbranch__")) != -1
 		exe "bwipeout __gitbranch__"
 	endif
-
-	" close all the diff windows
-	call GITLOG_CloseDiffBuffers()
 
 	" catch any stragglers
 	for found_buf in range(1, bufnr('$'))
