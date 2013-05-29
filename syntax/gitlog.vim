@@ -70,7 +70,7 @@ syn match	glMarker		"v "							contained containedin=glDirLine nextgroup=glDirNa
 syn match	glDirName		"[0-9A-Za-z\._#\-]\+"			contained containedin=glDirLine nextgroup=glStateRemoved,glStateAdded contains=@NoSpell
 syn match 	glStateRemoved	" [✗x]"							contained containedin=glDirLine nextgroup=glStateModule
 syn match 	glStateAdded	" [+]"							contained containedin=glDirLine nextgroup=glStateModule
-syn match 	glStateModule	" [m]"							contained containedin=glDirLine
+syn match 	glStateModule	" [m]"							contained containedin=glDirLine contains=@NoSpell
 
 syn region	glTreeLine		start="^\s*[✓+✗x±~ ]" end="$"	keepend contains=glMarker,glFileName,@NoSpell
 syn match 	glStateNew		"[✓+]"					contained containedin=glTreeLine nextgroup=glFileName
