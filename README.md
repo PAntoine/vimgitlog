@@ -1,9 +1,9 @@
 vimgitlog
 =========
 
-Version: 3.0.0
+Version: 3.1.0
 
-Git log and diff plugin for vim.
+Git Tree, Log and Diff plugin for vim. 
 
 Introduction
 ------------
@@ -29,7 +29,9 @@ In the tree window \_\_gitlog\_\_ the following commands work:
 	r			refreshes the tree element that it is on.
 	R			refeshes the root directory.
 	h			show the history of the current file.
-	<cr>		opens the respository version of the file, if it exists.
+	p			open the respository version of the file.
+	x			close the parent of the tree node.
+	<cr>		opens the local version of the file, if it exists.
 	<c-d>		pull down all the diff windows.
 	<c-h>		reset the current commit to HEAD.
 
@@ -64,24 +66,37 @@ And the should be it.
 Major Changes
 -------------
 
-Added support for submodules. 
+Swapped the way that files are opened in the tree view. The old way was silly and counter intuitive.
+So <cr> now opens the local and 'p' opens the one from the repo. Also, some of the context dependant
+behaviour has been removed as it was confusing and did not help.
+
+Sorry, if this change is annoying, but it seemed really strange in useage the other way and this makes
+a lot more sense (too me anyway).
+
+Honourable Mentions
+-------------------
+
+Should really mention NerdTree at this point as now this plugin has a tree view, that more and more 
+commands that are the same a NerdTree are starting to appear. Mostly as a NerdTree user I am starting
+to have GITLOG open more of my day so don't want to have to change plugins.
 
 Issues
 ------
 
 - There is a minor problem with GitLog getting confused when diff's on different files are done one after
 another. I would simply suggest pulling down GitLog and then either opening another file, or toggle the
-git log windows. The solution is to add a function to pull down the diff, but working out how to keep the
-screen layout when this is done.
+git log windows. C-d will pull down existing diffs in the code/tree window.
 
 - The "tree" view will use the current commit to walk the tree. If you move away from the HEAD
 commit then this will show the files as new, unlikely the files will exist in commits in other
-trees. Reset the HEAD if this is confusing.
+trees. Reset the HEAD if this is confusing. This only noticeable when picking a history in a sub-module.
 
 - submodule branches. Yup, not really supported. It is possible if I store the current branch for the
 tree elements. But, I am not sure of the side-effects of this. Also, this has enough support for what I
-need it todo. Will fix the bugs in this release before making more major changes.
+need it to do. Will fix the bugs in this release before making more major changes.
 
+- Speed. For large trees when opening new directories the tree can get slow. This is because the whole
+open tree is re-evaluated. There maybe a shortcut to this, but I like the refresh.
 
 Licence and Copyright
 ---------------------

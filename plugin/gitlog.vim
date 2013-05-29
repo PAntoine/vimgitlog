@@ -41,19 +41,21 @@ let s:root_list = [[]]
 
 " simbols used in the list window
 if !exists("g:GITLOG_DontUseUnicode") || g:GITLOG_DontUseUnicode == 0
-	let s:GITLOG_Added		= '✓ '
+	let s:GITLOG_Added		= '+ '
 	let s:GITLOG_Deleted	= '✗ '
-	let s:GITLOG_Changed	= '• '
+	let s:GITLOG_Changed	= '± '
 	let s:GITLOG_Same		= '  '
 	let s:GITLOG_Closed		= '▸ '
 	let s:GITLOG_Open		= '▾ '
+	let s:GITLOG_SubModule	= 'm '
 else
 	let s:GITLOG_Added		= '+ '
 	let s:GITLOG_Deleted	= 'x '
-	let s:GITLOG_Changed	= '- '
+	let s:GITLOG_Changed	= '~ '
 	let s:GITLOG_Same		= '  '
 	let s:GITLOG_Closed		= '> '
 	let s:GITLOG_Open		= 'v '
+	let s:GITLOG_SubModule	= 'm '
 endif
 
 let s:log_help = [	 "Log Window Keys (? to remove) ",
@@ -72,7 +74,9 @@ let s:tree_help = [	 "Tree Window Keys (? to remove) ",
 					\"r			refreshes the tree element that it is on.",
 					\"R			refeshes the root directory.",
 					\"h			show the history of the current file.",
-					\"<cr>		opens the respository version of the file, if it exists.",
+					\"p			show the previous version of the file.",
+					\"x			close the parent of the current selected node.",
+					\"<cr>		opens the local version of the file, if it exists.",
 					\"<c-d>		pull down all the diff windows.",
 					\"<c-h>		reset the current commit to HEAD.",
 					\""]
@@ -705,6 +709,7 @@ function! s:GITLOG_OpenTreeWindow()
 		silent exe "buffer " . s:buf_number
 		setlocal syntax=gitlog
 		setlocal buftype=nofile bufhidden=wipe nobuflisted noswapfile nowrap
+        setlocal scrolloff=999
 	endif
 	
 	"need to change the window
@@ -731,17 +736,18 @@ function! s:GITLOG_OpenTreeWindow()
 
 	if found_item != {}
 		call setpos('.',[0,found_item.lnum,0,0])
-		exe "normal zz"
 	endif
 
 	" set the keys on the tree window
 	mapclear <buffer>
-	map <buffer> <silent> <cr>	:call GITLOG_ActionListWindow(2)<cr>	" revision version of the file
+	map <buffer> <silent> <cr>	:call GITLOG_ActionListWindow(0)<cr>	" local version of the file
 	map <buffer> <silent> l		:call GITLOG_ActionListWindow(0)<cr>	" open local version of the file
+	map <buffer> <silent> p	    :call GITLOG_ActionListWindow(2)<cr>	" (previous) revision version of the file
 	map <buffer> <silent> d		:call GITLOG_ActionListWindow(1)<cr>	" diff the local with the repository
 	map <buffer> <silent> r		:call GITLOG_ActionListWindow(3)<cr>	" refresh the node
 	map <buffer> <silent> R		:call GITLOG_ActionListWindow(4)<cr>	" refresh the root node
 	map <buffer> <silent> h		:call GITLOG_ActionListWindow(5)<cr>	" show the history of the current file
+	map <buffer> <silent> x		:call GITLOG_ActionListWindow(7)<cr>	" close parent
 	map <buffer> <silent> <c-d>	:call GITLOG_ActionListWindow(6)<cr>	" pull down all the diff windows
 	map <buffer> <silent> <c-h>	:call GITLOG_ResetCommit()<cr>			" reset the current commit to HEAD
 	map <buffer> <silent> ?		:call GITLOG_ToggleHelp()<cr>			" toggle the help text
@@ -1417,13 +1423,28 @@ endfunction																	"}}}
 function! s:GITLOG_UpdateTreeWindow(output, directory, id, level)
 	for item in s:directory_list[a:id]
 		if item.type == 'tree' || item.type == 'commit'
+			let s_marker = ''
+
 			if (item.status == 'closed')
 				let marker = s:GITLOG_Closed
 			else
 				let marker = s:GITLOG_Open
 			endif
-			
-			call add(a:output,a:level . marker . item.name)
+	
+			if (item.state == 'local')
+				let s_marker = s:GITLOG_Added
+
+			elseif item.state == 'repo'
+				let s_marker = s:GITLOG_Deleted
+			endif
+
+			if (item.type == 'commit')
+				let e_marker = s:GITLOG_SubModule
+			else
+				let e_marker = ''
+			endif
+
+			call add(a:output,a:level . marker . item.name . ' ' . s_marker . e_marker)
 			let item.lnum = len(a:output)
 
 			if (item.status == 'open')
@@ -1481,6 +1502,7 @@ function! s:GITLOG_FindListItem(current_id,line_number)
 			break
 
 		elseif item.status == 'open'
+			let s:last_open_dir = item
 			let result = s:GITLOG_FindListItem(item.child,a:line_number)
 
 			if (result != {})
@@ -1533,6 +1555,7 @@ endfunction																    "}}}
 function! GITLOG_ActionListWindow(command)
 	let update_window = 0
 	let s:found_path = ''
+	let s:last_open_dir = {}
 	let found_item = s:GITLOG_FindListItem(s:current_root,line("."))
 
 	if a:command == 6
@@ -1552,7 +1575,14 @@ function! GITLOG_ActionListWindow(command)
 		let @" = temp
 		call setline(1,s:GITLOG_UpdateTreeWindow([ 'commit: ' . s:gitlog_current_commit ], s:repository_root,s:current_root,''))
 		setlocal nomodifiable
-	
+
+	elseif (a:command == 7)
+		if s:last_open_dir != {}
+			let s:last_open_dir.status = 'closed'
+			let found_item = s:last_open_dir
+			let update_window = 1
+		endif
+
 	elseif (found_item != {})
 		if found_item.type == 'tree' || found_item.type == 'commit'
 			" refresh the tree
@@ -1608,37 +1638,43 @@ function! GITLOG_ActionListWindow(command)
 					call GITLOG_ToggleWindows(1)
 				endif
 
-			elseif a:command == 0 || found_item.marker == s:GITLOG_Added || found_item.marker == s:GITLOG_Same
-				" Ok, open the local version of the file
-				if winnr("$") == 1
-					" only the log window open, so create a new window
-					exe "silent rightbelow vsplit " . file_name
+			elseif a:command == 0
+				if found_item.marker != s:GITLOG_Deleted
+					" Ok, open the local version of the file
+					if winnr("$") == 1
+						" only the log window open, so create a new window
+						exe "silent rightbelow vsplit " . file_name
 
-				elseif bufwinnr(bufnr(file_name)) != -1
-					" Ok, it's currently in a window
-					exe bufwinnr(bufnr(file_name)) . "wincmd w"
-				
-				else
-					" need to load the file, in the last window used
-					exe "silent " . winnr("$") . "wincmd w"
-					silent exe "edit " . file_name
+					elseif bufwinnr(bufnr(file_name)) != -1
+						" Ok, it's currently in a window
+						exe bufwinnr(bufnr(file_name)) . "wincmd w"
+					
+					else
+						" need to load the file, in the last window used
+						exe "silent " . winnr("$") . "wincmd w"
+						silent exe "edit " . file_name
+					endif
 				endif
+
 			elseif a:command == 1
-				" Ok, diff the local version against the tree version
-				if winnr("$") == 1
-					" only the log window open, so create a new window
-					exe "silent rightbelow vsplit " . file_name
-				elseif bufwinnr(bufnr(file_name)) != -1
-					" Ok, it's currently in a window
-					exe bufwinnr(bufnr(file_name)) . "wincmd w"
-				else
-					" need to load the file, in the last window used
-					exe "silent " . winnr("$") . "wincmd w"
-					silent exe "edit " . file_name
+				if (found_item.marker != s:GITLOG_Added && found_item.marker != s:GITLOG_Deleted)
+					" Ok, diff the local version against the tree version
+					if winnr("$") == 1
+						" only the log window open, so create a new window
+						exe "silent rightbelow vsplit " . file_name
+					elseif bufwinnr(bufnr(file_name)) != -1
+						" Ok, it's currently in a window
+						exe bufwinnr(bufnr(file_name)) . "wincmd w"
+					else
+						" need to load the file, in the last window used
+						exe "silent " . winnr("$") . "wincmd w"
+						silent exe "edit " . file_name
+					endif
+
+					call s:GITLOG_OpenDiffWindow(s:gitlog_current_commit,file_name,file_name)
 				endif
 
-				call s:GITLOG_OpenDiffWindow(s:gitlog_current_commit,file_name,file_name)
-			else
+			elseif a:command == 2 && found_item.marker != s:GITLOG_Added
 				" Ok, open the version in the repository
 				let buffer_name = s:gitlog_current_commit . ':' . file_name
 

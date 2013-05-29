@@ -10,8 +10,8 @@
 
 
 Author:	  Peter Antoine
-Date:     May 25, 2013
-Version:  3.0.0
+Date:     May XX, 2013
+Version:  3.1.0
 HomePage: https://github.com/PAntoine/vimgitlog
 
 
@@ -175,13 +175,13 @@ The tree window will have the following layout:
       |   ▸ Another Dir         |                                         |
       |   file_3                |                                         |
       | ▸ dir_2                 |                                         |
-      | ▸ dir_3                 |                                         |
+      | ▸ dir_3 m               |                                         |
       | ▸ dir_4                 |                                         |
       | ▾ dir_5                 |                                         |
           ▾ dir_5_1             |                                         |
             ▾ dir_5_2           |                                         |
-      | ▾ dir_6                 |                                         |
-      | ▸ dir_7                 |                                         |
+      | ▾ dir_6 x               |                                         |
+      | ▸ dir_7 +               |                                         |
       |                         |                                         |
       .                         .                                         .
       .                         .                                         .
@@ -200,7 +200,7 @@ The tree window will have the following layout:
 
 The tree can be navigated in the usual way, i.e. if a directory is closed
 hitting <cr> while on it will open the sub-directory tree. If open this will
-close it. 
+close it. If 'x' is pressed, then the parent node will be closed if the 
 
 The tree recognises three different states for the files, local-only,
 version-only and changed. The behaviour of the tree view differs with each of
@@ -222,6 +222,10 @@ the two do not match. Selecting <cr> will open the version from the repository.
 pressing 'l' will call the version from the local file system, and 'd' will
 diff the two files.
 
+Also, the directories may have trailing markers, for (sub)module directories
+are marked with an 'm', directories that have been added '+' and the deleted
+directories 'x'. 
+
 Files that are the same will be unmarked and pressing <cr> will call the version
 that is residing on the local file system.
 
@@ -235,6 +239,11 @@ Open Local Revision: 'l'
 
 This key will cause the revision file to be opened. The version on disk will
 be opened if it exists.
+
+Open Respository Revision: 'p'
+
+This key will cause the revision file to be opened, the version from the repository
+will be opened. If it exists.
 
 Diff Version: 'd'
 
@@ -288,6 +297,13 @@ This will install GITLOG on the <f7> key.
 
 ==============================================================================
 7. History                                       *gitlog-history*
+  3.1.0: Xxx nn, 2013
+         PA: Changed <cr> on code tree to open local (also added 'p' for previous version).
+         PA: Set scrolloff to 999 in tree - to center the tree.
+         PA: Added indicator for the directories and their status.
+         PA: Fixed syntax highlighting.
+         PA: Added 'x' to close the parent in tree view.
+
   3.0.0: May 25, 2013
          PA: Added support for submodules.
 
