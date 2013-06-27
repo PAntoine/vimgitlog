@@ -10,8 +10,8 @@
 
 
 Author:	  Peter Antoine
-Date:     May XX, 2013
-Version:  3.1.0
+Date:     June 27, 2013
+Version:  3.1.1
 HomePage: https://github.com/PAntoine/vimgitlog
 
 
@@ -297,6 +297,10 @@ This will install GITLOG on the <f7> key.
 
 ==============================================================================
 7. History                                       *gitlog-history*
+  3.1.1: June 27, 2013
+  		 PA: Removed Scrolloff - did not know it was global and added as redraw to fix.
+		 PA: A couple of syntax fixes.
+
   3.1.0: Xxx nn, 2013
          PA: Changed <cr> on code tree to open local (also added 'p' for previous version).
          PA: Set scrolloff to 999 in tree - to center the tree.

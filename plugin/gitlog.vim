@@ -29,6 +29,7 @@ let s:gitlog_current_commit = 'HEAD'
 let s:revision_file = ''
 let s:last_diff_path = ''
 let s:diff_buffer_list = []
+let s:user_selected_scrolloff = &scrolloff
 
 if !(exists("g:GITLOG_default_mode"))
 	let g:GITLOG_default_mode = 1
@@ -709,7 +710,6 @@ function! s:GITLOG_OpenTreeWindow()
 		silent exe "buffer " . s:buf_number
 		setlocal syntax=gitlog
 		setlocal buftype=nofile bufhidden=wipe nobuflisted noswapfile nowrap
-        setlocal scrolloff=999
 	endif
 	
 	"need to change the window
@@ -733,9 +733,11 @@ function! s:GITLOG_OpenTreeWindow()
 		let header = s:tree_help + [ 'commit: ' . s:gitlog_current_commit ]
 		call setline(1,s:GITLOG_UpdateTreeWindow(header, s:repository_root,s:current_root,''))
 	endif
+	
+	redraw
 
 	if found_item != {}
-		call setpos('.',[0,found_item.lnum,0,0])
+		execute "normal " . (found_item.lnum - 1) . "j"
 	endif
 
 	" set the keys on the tree window
@@ -1735,7 +1737,9 @@ endfunction																    "}}}
 " FUNCTION: GITLOG_LeaveBuffer()											{{{
 "
 " On leaving the buffer, get the commits that have been selected. This will
-" allow for the external search to be able to search the correct lines.
+" allow for the external search to be able to search the correct lines. Also
+" set the scrolloff back to what the user was using before entering the 
+" buffer
 "
 " vars:
 "	none
@@ -1744,8 +1748,5 @@ endfunction																    "}}}
 "	nothing
 "
 function! s:GITLOG_LeaveBuffer()
-
 	call s:GITLOG_GetCommits(a:firstline,a:lastline)
-
 endfunction																	"}}}
-

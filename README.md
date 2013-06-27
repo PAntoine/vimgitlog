@@ -1,7 +1,7 @@
 vimgitlog
 =========
 
-Version: 3.1.0
+Version: 3.1.1
 
 Git Tree, Log and Diff plugin for vim. 
 
@@ -66,12 +66,8 @@ And the should be it.
 Major Changes
 -------------
 
-Swapped the way that files are opened in the tree view. The old way was silly and counter intuitive.
-So <cr> now opens the local and 'p' opens the one from the repo. Also, some of the context dependant
-behaviour has been removed as it was confusing and did not help.
-
-Sorry, if this change is annoying, but it seemed really strange in useage the other way and this makes
-a lot more sense (too me anyway).
+Removed scrolloff as it is global and really annoying. Now uses a 'redraw' to centre the page. Will see
+if the stutter is annoying.
 
 Honourable Mentions
 -------------------
