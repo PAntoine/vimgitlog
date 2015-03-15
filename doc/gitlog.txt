@@ -10,8 +10,8 @@
 
 
 Author:	  Peter Antoine
-Date:     June 27, 2013
-Version:  3.1.1
+Date:     March 15, 2015
+Version:  4.0.0
 HomePage: https://github.com/PAntoine/vimgitlog
 
 
@@ -347,6 +347,7 @@ g:GITLOG_ignore_directories						*g:GITLOG_ignore_directories*
 		 PA: NEW FEATURE: Walk Full Tree.
 		 PA: NEW FEATURE: Ability to not check files.
 		 PA: Fixed for git behaviour change observed with git 1.9.+
+		 PA: Reorganised the code base.
 
   3.1.1: June 27, 2013
   		 PA: Removed Scrolloff - did not know it was global and added as redraw to fix.
