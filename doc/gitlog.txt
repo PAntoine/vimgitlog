@@ -29,7 +29,8 @@ For instructions on installing this file, type:
     4. Git History Searching..................: |gitlog-searching|
     5. Git History Tree.......................: |gitlog-tree|
     6. Mapping GitLog Functions...............: |gitlog-mapping|
-    7. History................................: |gitlog-history|
+    7. Configuring GitLog.....................: |gitlog-config|
+    8. History................................: |gitlog-history|
 
 ==============================================================================
 2. Description                                   *gitlog-description*
@@ -240,7 +241,7 @@ Open Local Revision: 'l'
 This key will cause the revision file to be opened. The version on disk will
 be opened if it exists.
 
-Open Respository Revision: 'p'
+Open Repository Revision: 'p'
 
 This key will cause the revision file to be opened, the version from the repository
 will be opened. If it exists.
@@ -296,7 +297,57 @@ you would attach it to a function key, so the following mapping would be useful
 This will install GITLOG on the <f7> key.
 
 ==============================================================================
-7. History                                       *gitlog-history*
+7. Configuring GitLog									*gitlog-config*
+
+There is only one function that really required mapping and that is the
+toggle function. As this is a single operation function I would assume that
+you would attach it to a function key, so the following mapping would be useful
+
+g:GITLOG_walk_full_tree							*g:GITLOG_walk_full_tree*
+    When opening the tree window if this is set to '1' then the whole
+    tree will be walked. It can take a long time to do the walk but
+    takes the hit in one go. But more important to be able show only
+    the differences will need for a full walk. [0]
+
+g:GITLOG_directory_default						*g:GITLOG_directory_default*
+    When opening a full tree what should the default mode be for the drectory
+	that is opened. This mode only really effects the full tree mode as in the
+	incremental mode having open children makes no sense. This does not have
+	any effect in non-full mode. ['closed']
+
+g:GITLOG_check_file_deferences					*g:GITLOG_check_file_deferences*
+    This makes the building of the tree faster. If set it means that the file
+    contents are not checked. it does reduce the functionality if you are
+    looking for merge checking and other things, but on big trees it can save
+    a lot of time. This defaults to checking to be backwards compatible.[1]
+
+g:GITLOG_show_only_changes						*g:GITLOG_show_only_changes*
+    This feature will cause only the files and directories that have changes
+    that is files that have been added, deleted or amended (if file checking
+    is on) and for directories that have a changed file (as just mentioned).
+    This defaults to show all for backwards compatibility [0]
+
+g:GITLOG_ignore_suffixes							*g:GITLOG_ignore_suffixes*
+    This switches on the pruning of the files. It will allow for a list of
+	file suffixes that are going to be ignored when the tree is built. If
+	the suffix list is changed then the tree will need to be fully rebuilt.
+	The defaults are backward compatible.  []
+
+g:GITLOG_ignore_directories						*g:GITLOG_ignore_directories*
+    This filters out specified directory names. That is all directories with
+	these names will not be shown in the tree. As with the suffixes if the
+	list is changed then the tree will need to be rebuilt. []
+
+
+==============================================================================
+8. History                                       *gitlog-history*
+  4.0.0: Mar 15, 2015
+         PA: NEW FEATURE: Show only changed files.
+		 PA: NEW FEATURE: Filter files and directories by name.
+		 PA: NEW FEATURE: Walk Full Tree.
+		 PA: NEW FEATURE: Ability to not check files.
+		 PA: Fixed for git behaviour change observed with git 1.9.+
+
   3.1.1: June 27, 2013
   		 PA: Removed Scrolloff - did not know it was global and added as redraw to fix.
 		 PA: A couple of syntax fixes.
