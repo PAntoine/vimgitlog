@@ -1908,7 +1908,7 @@ function! GITLOG_ActionShowItemHistory()
 	if found_item != {}
 		if found_item.type == 'blob' && found_item.marker != s:GITLOG_Added
 			" now show the history
-			let s:revision_file = fnamemodify(file_name,":p")
+			let s:revision_file = fnamemodify(s:found_path . found_item.name,":p")
 			call GITLOG_ToggleWindows(1)
 		endif
 	endif
@@ -1932,7 +1932,7 @@ function! GITLOG_ActionCloseParent()
 		let found_item = s:last_open_dir
 		let update_window = 1
 
-		call GITLOG_RedrawTreeWindow(1)
+		call GITLOG_RedrawTreeWindow(found_item.lnum)
 	endif
 endfunction																	"}}}
 " FUNCTION: GITLOG_ActionToggleShowChanges()								{{{
