@@ -1,7 +1,7 @@
 vimgitlog
 =========
 
-Version: 3.1.1
+Version: 4.0.1
 
 Git Tree, Log and Diff plugin for vim. 
 
@@ -14,36 +14,37 @@ current revision loaded.
 
 In the log window \_\_gitlog\_\_ the following commands work:
 
-    o			opens the file. This will simply open the file in a new window.
-    s			starts a search and opens the search window.
-	t           open the tree view at the current commit.
-	d			This will open the file and diff it against the window that was active when it was lauched.
-	<cr>		This will open the file and diff it against the window that was active when it was lauched.
-	<c-d>		Close all the open diff's.
-	<c-h>		reset the current commit to HEAD.
+    o            opens the file. This will simply open the file in a new window.
+    s            starts a search and opens the search window.
+    t            open the tree view at the current commit.
+    d            This will open the file and diff it against the window that was active when it was lauched.
+    <cr>         This will open the file and diff it against the window that was active when it was lauched.
+    <c-d>        Close all the open diff's.
+    <c-h>        reset the current commit to HEAD.
 
 In the tree window \_\_gitlog\_\_ the following commands work:
 
-    l			opens the local version of the file, if it exists.
-    d			diff's the tree view of the file against the local version.
-	r			refreshes the tree element that it is on.
-	R			refeshes the root directory.
-	h			show the history of the current file.
-	p			open the respository version of the file.
-	x			close the parent of the tree node.
-	<cr>		opens the local version of the file, if it exists.
-	<c-d>		pull down all the diff windows.
-	<c-h>		reset the current commit to HEAD.
+    l            opens the local version of the file, if it exists.
+    d            diff's the tree view of the file against the local version.
+    r            refreshes the tree element that it is on.
+    R            refeshes the root directory.
+    h            show the history of the current file.
+    p            open the respository version of the file.
+    x            close the parent of the tree node.
+    C            toggle 'only changes only' and rebuild the tree.
+    <cr>         opens the local version of the file, if it exists.
+    <c-d>        pull down all the diff windows.
+    <c-h>        reset the current commit to HEAD.
 
 In the search window \_\_gitsearch\_\_ the two following commands work:
 
-    o			opens the file. This will simply open the file in a new window.
-	<cr>		This will open the file and diff it against the window that was active when it was lauched.
+    o            opens the file. This will simply open the file in a new window.
+    <cr>         This will open the file and diff it against the window that was active when it was lauched.
 
 In the Branch window:
 
     <cr>        This will change the log window to the branch selected. It does not change the current
-	            branch of the given repository.
+                branch of the given repository.
 
 The see the help during uses, type '?' in the log/tree window.
 
@@ -54,9 +55,9 @@ Simply copy the contents of the plugin directory to the plugin directory in your
 
 You will need to map the toggle function to use it.
 
-	let g:GITLOG_default_mode = 2
-	map <silent> <f7> :call GITLOG_ToggleWindows()<cr>
-	map <silent> <c-f7> :call GITLOG_FlipWindows()<cr>
+    let g:GITLOG_default_mode = 2
+    map <silent> <f7> :call GITLOG_ToggleWindows()<cr>
+    map <silent> <c-f7> :call GITLOG_FlipWindows()<cr>
 
 And the should be it.
 
@@ -66,8 +67,22 @@ And the should be it.
 Major Changes
 -------------
 
-Removed scrolloff as it is global and really annoying. Now uses a 'redraw' to centre the page. Will see
-if the stutter is annoying.
+Bug Fix Release.
+
+A Couple of new features have slipped in, but purely as side-effects of fixing bugs.
+- Fixed symlink looping issue.
+  Code now detects when a symlink causes a loop. This is not highlighted with a 'B' next to the
+  directory name. This is marked as `no_follow` and the link cannot be opened. Also links are
+  now highlighted as we 
+
+- Fixed issue with vim loaded in sub-directory not correctly routing.
+  This fix is only possible as git has added "-C" to the command line and commands can be re-routed
+  in git and the parts are now correctly formatted. Otherwise using "--work-dir" does not do what
+  you think it does, if you are in a sub-directory of the tree then it will return relative paths.
+  With the '-C' option it returns paths from the root, this are predictable and no expensive and
+  complicated processing is required.
+
+- Fixed Documentation and syntax highlighting problems.
 
 Honourable Mentions
 -------------------
@@ -91,8 +106,16 @@ trees. Reset the HEAD if this is confusing. This only noticeable when picking a 
 tree elements. But, I am not sure of the side-effects of this. Also, this has enough support for what I
 need it to do. Will fix the bugs in this release before making more major changes.
 
-- Speed. For large trees when opening new directories the tree can get slow. This is because the whole
-open tree is re-evaluated. There maybe a shortcut to this, but I like the refresh.
+TODO
+----
+
+- Performance.
+  It is not good, need to do some things to make this a bit go-now on the larger trees. Time to prune
+  some of those pesky search paths.
+
+- REPO support.
+  These are subtly and annoyingly different from sub-modules. 
+
 
 Licence and Copyright
 ---------------------

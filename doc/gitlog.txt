@@ -10,8 +10,8 @@
 
 
 Author:	  Peter Antoine
-Date:     March 15, 2015
-Version:  4.0.0
+Date:     March 17, 2015
+Version:  4.0.1
 HomePage: https://github.com/PAntoine/vimgitlog
 
 
@@ -179,8 +179,8 @@ The tree window will have the following layout:
       | ▸ dir_3 m               |                                         |
       | ▸ dir_4                 |                                         |
       | ▾ dir_5                 |                                         |
-          ▾ dir_5_1             |                                         |
-            ▾ dir_5_2           |                                         |
+      |   ▾ dir_5_1             |                                         |
+      |     ▾ dir_5_2           |                                         |
       | ▾ dir_6 x               |                                         |
       | ▸ dir_7 +               |                                         |
       |                         |                                         |
@@ -225,7 +225,10 @@ diff the two files.
 
 Also, the directories may have trailing markers, for (sub)module directories
 are marked with an 'm', directories that have been added '+' and the deleted
-directories 'x'. 
+directories 'x'. Directories that are symbolic links are marked with and 'l'.
+
+If the Directory has a loop in the symbolic link then it is marked with 'ł' (or
+'B' without unicode).
 
 Files that are the same will be unmarked and pressing <cr> will call the version
 that is residing on the local file system.
@@ -262,6 +265,10 @@ Refresh Tree: 'R'
 
 This will refresh the whole tree.
 
+Toggle Change Only: 'C'
+
+This will only shjow changes between the current revision and the local tree.
+
 Close Diff Buffer: <c-d>
 
 Pressing these keys will cause the any diff windows that are open to close.
@@ -283,6 +290,13 @@ specific branch that is required.
 If files change on the file-system the tree can be refreshed by pressing the 'r'
 key. This will cause the current directory under the cursor to be refreshed. It
 will close any directories that have been opened. 
+
+5.5. Going 'Change Only'
+
+If you want to only see file changes in the tree, then press 'C' in the tree
+window will toggle this mode. It will cause the tree to be re-walked with the
+obvious overhead - but this only happens if the tree has not been walked at
+least once before. Toggling is quite instantaneous after this happens.
 
 ==============================================================================
 6. Mapping GitLog Functions                      	*gitlog-mapping*
@@ -310,7 +324,7 @@ g:GITLOG_walk_full_tree							*g:GITLOG_walk_full_tree*
     the differences will need for a full walk. [0]
 
 g:GITLOG_directory_default						*g:GITLOG_directory_default*
-    When opening a full tree what should the default mode be for the drectory
+    When opening a full tree what should the default mode be for the directory
 	that is opened. This mode only really effects the full tree mode as in the
 	incremental mode having open children makes no sense. This does not have
 	any effect in non-full mode. ['closed']
@@ -341,6 +355,15 @@ g:GITLOG_ignore_directories						*g:GITLOG_ignore_directories*
 
 ==============================================================================
 8. History                                       *gitlog-history*
+  4.0.1: Mar 17, 2015
+         PA: BUG: Fixed issue with sym-link loops.
+		 PA: BUG: Fixed issue with trees not properly displaying in sub-dirs.
+		 PA: BUG: Fixed issue with documentation being wrong.
+		 PA: BUG: Fixed syntax highlighting.
+		 PA: BUG: Fixed manual opening of sub-dir was not correctly filtering.
+		 PA: NEW_FEATURE: Not walking links that loop.
+		 PA: NEW_FEATURE: Link highlighting.
+
   4.0.0: Mar 15, 2015
          PA: NEW FEATURE: Show only changed files.
 		 PA: NEW FEATURE: Filter files and directories by name.

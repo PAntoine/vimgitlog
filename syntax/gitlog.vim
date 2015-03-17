@@ -67,14 +67,14 @@ syn match	glMarker		"▸ "							contained containedin=glDirLine nextgroup=glDir
 syn match	glMarker		"▾ "							contained containedin=glDirLine nextgroup=glDirName
 syn match	glMarker		"> "							contained containedin=glDirLine nextgroup=glDirName
 syn match	glMarker		"v "							contained containedin=glDirLine nextgroup=glDirName
-syn match	glDirName		"[0-9A-Za-z\._#\-]\+"			contained containedin=glDirLine nextgroup=glStateRemoved,glStateAdded contains=@NoSpell
-syn match 	glStateRemoved	" [✗x]"							contained containedin=glDirLine nextgroup=glStateModule
-syn match 	glStateAdded	" [+]"							contained containedin=glDirLine nextgroup=glStateModule,glStateChanged
-syn match 	glStateModule	" [m]"							contained containedin=glDirLine contains=@NoSpell
+syn match	glDirName		"[0-9A-Za-z\._#\-]\+"			contained containedin=glDirLine nextgroup=glStateModule,glStateLink,glStateBadLink,glStateNew,glStateDeleted,glStateChanged contains=@NoSpell
+syn match 	glStateModule	" [m]"							contained containedin=glDirLine nextgroup=glStateNew,glStateDeleted,glStateChanged contains=@NoSpell
+syn match 	glStateLink		" [l]"							contained containedin=glDirLine nextgroup=glStateNew,glStateDeleted,glStateChanged contains=@NoSpell
+syn match 	glStateBadLink	" [łB]"							contained containedin=glDirLine nextgroup=glStateNew,glStateDeleted,glStateChanged contains=@NoSpell
 
 syn region	glTreeLine		start="^\s*[✓+✗x±~ ] [0-9A-Za-z\._#\-:]\+$" end="$"	keepend contains=glMarker,glFileName,@NoSpell
-syn match 	glStateNew		"[✓+]"					contained containedin=glTreeLine nextgroup=glFileName
-syn match 	glStateDeleted	"[✗x]"					contained containedin=glTreeLine nextgroup=glFileName
+syn match 	glStateNew		"[+]"					contained containedin=glTreeLine,glDirLine nextgroup=glFileName
+syn match 	glStateDeleted	"[✗x]"					contained containedin=glTreeLine,glDirLine nextgroup=glFileName
 syn match 	glStateChanged	"[±~]"					contained containedin=glTreeLine,glDirLine nextgroup=glFileName
 syn match	glFileName		"[0-9A-Za-z\._#\-]\+$"	contained containedin=glTreeLine contains=@NoSpell
 
@@ -87,7 +87,8 @@ hi 		glStateNew			term=bold ctermfg=Green		guifg=Green
 hi 		glStateDeleted		term=bold ctermfg=Red		guifg=Red
 hi 		glStateChanged		term=bold ctermfg=Yellow	guifg=Yellow
 hi 		glStateAdded		term=bold ctermfg=Green		guifg=Green
-hi 		glStateRemoved		term=bold ctermfg=Red		guifg=Red
+hi 		glStateLink			term=bold ctermfg=Yellow	guifg=Yellow
+hi 		glStateBadLink		term=bold ctermfg=Red		guifg=Red
 hi link	glStateModule		Comment
 hi link	glStateSame			String
 

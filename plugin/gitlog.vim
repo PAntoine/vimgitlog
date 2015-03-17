@@ -20,7 +20,24 @@
 "
 " GLOBAL INITIALISERS
 "																				{{{
+" Version checking
+let version_str = system("git --version")
+if v:shell_error
+	fini
+else
+	let version_list = split(version_str)
+	if version_list[2] >= '1.8.5'
+		" --work-dir does not work if you are in the repository tree as it uses
+		" relative pathing and that is blahhh!!! But -C works as expected and
+		" will work. But it arrived in 1.8.5 so we will fall back to the bad ways
+		" in older gits. Some features wont work as expected but no regression.
+		let s:use_big_c = 1
+	endif
+	unlet version_list
+endif
+unlet version_str
 
+" set up variables
 let s:help = 0
 let s:tree_root = 0
 let s:current_root = 0
@@ -74,7 +91,9 @@ if !exists("g:GITLOG_DontUseUnicode") || g:GITLOG_DontUseUnicode == 0
 	let s:GITLOG_Same		= '  '
 	let s:GITLOG_Closed		= '▸ '
 	let s:GITLOG_Open		= '▾ '
-	let s:GITLOG_SubModule	= 'm '
+	let s:GITLOG_SubModule	= 'm'
+	let s:GITLOG_Link		= 'l'
+	let s:GITLOG_BadLink	= 'ł'
 else
 	let s:GITLOG_Added		= '+ '
 	let s:GITLOG_Deleted	= 'x '
@@ -82,7 +101,9 @@ else
 	let s:GITLOG_Same		= '  '
 	let s:GITLOG_Closed		= '> '
 	let s:GITLOG_Open		= 'v '
-	let s:GITLOG_SubModule	= 'm '
+	let s:GITLOG_SubModule	= 'm'
+	let s:GITLOG_Link		= 'l'
+	let s:GITLOG_BadLink	= 'B'
 endif
 
 let s:log_help = [	 "Log Window Keys (? to remove) ",
@@ -368,7 +389,7 @@ function!	GITLOG_ToggleWindows(...)
 		let s:repository_root = s:GITLOG_FindRespositoryRoot(s:revision_file)
 
 		if len(s:root_list) == 1
-			call add(s:root_list,{'git_dir':s:repository_root . '.git', 'root_dir': ''})
+			call add(s:root_list,{'git_dir':s:repository_root . '.git', 'root_dir': s:repository_root})
 		endif
 
 		let fend = expand('%:t')
@@ -628,7 +649,7 @@ function! s:GITLOG_GetSubModuleDetails(file_path, item)
 
 	if (root != '')
 		let a:item.root_id = len(s:root_list)
-		call add(s:root_list,{'git_dir': root, 'root_dir': a:file_path})
+		call add(s:root_list,{'git_dir': root, 'root_dir': a:file_path . '/'})
 	endif
 endfunction																	"}}}
 " FUNCTION: GITLOG_BuildFullTree()		 				 					{{{
@@ -653,8 +674,16 @@ function! s:GITLOG_BuildFullTree(path, parent_item, recursive)
 
 	" now walk the new directory and build transverse the children
 	for item in s:directory_list[c_dir]
-		if item.type == 'tree' || item.type == 'commit'
-			let item.marker = s:GITLOG_Same
+		if item.type == 'tree' || item.type == 'commit' || item.type == 'link'
+			let new_path = a:path . item.name . '/'
+
+			" Do we have a safe link or is it recursive?
+			if item.type == 'link' && stridx(fnamemodify(s:root_list[item.root_id].root_dir . a:path,':p'), fnamemodify(resolve(s:root_list[item.root_id].root_dir . new_path),':p')) == 0
+				let check_item = 0
+				let item.no_follow = 1
+			else
+				let check_item = 1
+			endif
 
 			if index(g:GITLOG_ignore_directories, item.name) == -1
 				" Lets check for directory items
@@ -666,7 +695,10 @@ function! s:GITLOG_BuildFullTree(path, parent_item, recursive)
 						call s:GITLOG_GetSubModuleDetails(new_path, item)
 					endif
 
-					let item.child = s:GITLOG_BuildFullTree(new_path, item, a:recursive)
+					" Do we need to check the files in the sub_directory.
+					if check_item == 1
+						let item.child = s:GITLOG_BuildFullTree(new_path, item, a:recursive)
+					endif
 
 					" If the sub is changed then we have changed (and the parent has changed).
 					let item.status = g:GITLOG_directory_default
@@ -676,7 +708,6 @@ function! s:GITLOG_BuildFullTree(path, parent_item, recursive)
 				if item.marker != s:GITLOG_Same
 					let result = s:GITLOG_Changed
 				endif
-
 			endif
 		else
 			" Lets handle file items
@@ -687,7 +718,13 @@ function! s:GITLOG_BuildFullTree(path, parent_item, recursive)
 					let item.marker = s:GITLOG_Same
 				else
 					" Ok, file exists so need to check it's status
-					let run_command = "git  --git-dir=" . s:root_list[item.root_id].git_dir . " --no-pager diff --quiet " . s:gitlog_current_commit . " -- " . a:path . item.name
+					let file_name = substitute(a:path . item.name,s:root_list[item.root_id].root_dir,"","")
+
+					if s:use_big_c
+						let run_command = "git  --git-dir=" . s:root_list[item.root_id].git_dir . " -C " . s:root_list[item.root_id].root_dir . " --no-pager diff --quiet " . s:gitlog_current_commit . " -- " . file_name
+					else
+						let run_command = "git  --git-dir=" . s:root_list[item.root_id].git_dir . " --work-dir=" . s:root_list[item.root_id].root_dir . " --no-pager diff --quiet " . s:gitlog_current_commit . " -- " . file_name
+					endif
 					call system(run_command)
 
 					if v:shell_error
@@ -742,7 +779,7 @@ function! s:GITLOG_OpenTreeToFile(file_path)
 					let curent_directory = item.child
 					let found = 1
 
-					if found_item.type == 'tree' || found_item.type == 'commit'
+					if found_item.type == 'tree' || found_item.type == 'commit' || found_item.type == 'link'
 						let item.status = 'open'
 					endif
 
@@ -753,7 +790,7 @@ function! s:GITLOG_OpenTreeToFile(file_path)
 			let new_path = new_path . component . "/"
 
 			" open the sub-directory if we need too
-			if found_item != {} && curent_directory == 0 && (found_item.type == 'tree' || found_item.type == 'commit')
+			if found_item != {} && curent_directory == 0 && (found_item.type == 'tree' || found_item.type == 'commit' || found_item.type == 'link')
 				if found_item.type == 'tree'
 					let found_item.child = GITLOG_MakeDirectory(new_path,found_item.root_id,found_item)
 				else
@@ -794,7 +831,7 @@ endfunction																"}}}
 "	nothing
 "
 function! s:GITLOG_OpenTreeWindow()
-	let found_item = {}
+	let found_item = {'lnum':1}
 
 	if bufwinnr(bufnr("__gitlog__")) != -1
 		" window already open - just go to it
@@ -821,28 +858,28 @@ function! s:GITLOG_OpenTreeWindow()
 	" update the tree window
 	if len(s:directory_list) == 1
 		let x = {'root_id':1, 'marker':s:GITLOG_Same}
-		let s:tree_root = s:GITLOG_BuildFullTree('',x, g:GITLOG_walk_full_tree)
+
+		if g:GITLOG_walk_full_tree == 1
+			echohl WarningMsg
+			echomsg "Walking full tree - this might take a while."
+			echohl Normal
+		endif
+
+		let s:tree_root = s:GITLOG_BuildFullTree('', x, g:GITLOG_walk_full_tree)
 		let s:current_root = s:tree_root
 	endif
 
 	" do we need to open a directory
 	if s:revision_path != ''
 		let found_item = s:GITLOG_OpenTreeToFile(s:revision_path)
+
+		if found_item == {}
+			let found_item = {'lnum':1}
+		endif
 	endif
 
 	" now update the window
-	if s:help == 0
-		call setline(1,s:GITLOG_UpdateTreeWindow([ 'commit: ' . s:gitlog_current_commit ], s:repository_root,s:current_root,''))
-	else
-		let header = s:tree_help + [ 'commit: ' . s:gitlog_current_commit ]
-		call setline(1,s:GITLOG_UpdateTreeWindow(header, s:repository_root,s:current_root,''))
-	endif
-
-	redraw
-
-	if found_item != {}
-		execute "normal " . (found_item.lnum - 1) . "j"
-	endif
+	call GITLOG_RedrawTreeWindow(found_item.lnum)
 
 	" set the keys on the tree window
 	mapclear <buffer>
@@ -892,6 +929,9 @@ function! GITLOG_RedrawTreeWindow(lnum)
 	call setline(1,s:GITLOG_UpdateTreeWindow(title, s:repository_root,s:current_root,''))
 	call setpos('.',[0,a:lnum,0,0])
 	setlocal nomodifiable
+
+	echo ""
+	redraw
 endfunction																	"}}}
 " FUNCTION: GITLOG_OpenLogWindow()											{{{
 "
@@ -1460,12 +1500,11 @@ endfunction																	"}}}
 "	nothing
 "
 function! GITLOG_MakeDirectory(path_name,root_id,parent_item)
-	if (a:root_id == 1)
-		let run_command = "git --git-dir=" . s:root_list[a:root_id].git_dir . " --no-pager ls-tree " . s:gitlog_current_commit . " " . a:path_name . " --abbrev"
+	if s:use_big_c
+		let run_command = "git --git-dir=" . s:root_list[a:root_id].git_dir . " -C " . s:root_list[a:root_id].root_dir . " --no-pager ls-tree " . s:gitlog_current_commit . " " . a:path_name . " --abbrev"
 	else
-		let run_command = "git --git-dir=" . s:root_list[a:root_id].git_dir . " --no-pager ls-tree " . s:gitlog_current_commit . " " . substitute(a:path_name,s:root_list[a:root_id].root_dir,"./","") . " --abbrev"
+		let run_command = "git --git-dir=" . s:root_list[a:root_id].git_dir . " --work-dir=" . s:root_list[a:root_id].root_dir . " --no-pager ls-tree " . s:gitlog_current_commit . " " . a:path_name . " --abbrev"
 	endif
-
     let search_result = system(run_command)
 
 	if v:shell_error
@@ -1474,9 +1513,9 @@ function! GITLOG_MakeDirectory(path_name,root_id,parent_item)
 	endif
 
 	" get the current state of the working directory
-	let current_dir = split(expand(a:path_name . '*'))
-
-	if current_dir == [ a:path_name . "*" ]
+	let current_dir = expand(s:root_list[a:root_id].root_dir . a:path_name . '*', 1, 1)
+	
+	if current_dir == [ s:root_list[a:root_id].root_dir . a:path_name . "*" ]
 		let current_dir = []
 	else
 		call map(current_dir,'fnamemodify(fnameescape(v:val),":t")')
@@ -1491,10 +1530,20 @@ function! GITLOG_MakeDirectory(path_name,root_id,parent_item)
 		let item_parts = split(item)
 		let name = fnamemodify(fnameescape(item_parts[3]),":t")
 
-		if ((item_parts[1] == 'tree' && index(g:GITLOG_ignore_directories, name) == -1) || (item_parts[1] == 'blob' && index(g:GITLOG_ignore_suffixes, fnamemodify(name, ":e")) == -1))
-			let new_item = {	'name'		: fnamemodify(fnameescape(item_parts[3]),":t"),
+		if item_parts[1] == 'tree' && getftype(a:path_name . name) == 'link'
+			let item_parts[1] = 'link'
+		endif
+
+		if item_parts[1] == 'tree' || item_parts[1] == 'link'
+			let add = index(g:GITLOG_ignore_directories, name) == -1
+		else
+			let add = index(g:GITLOG_ignore_suffixes, fnamemodify(name, ":e")) == -1
+		endif
+			
+		if add == 1
+			let new_item = {	'name'		: name,
 							\	'status'	: 'closed',
-							\	'commit'	: item_parts[2],
+							\	'hash'		: item_parts[2],
 							\	'type'		: item_parts[1],
 							\	'root_id'	: a:root_id,
 							\	'child'		: 0,
@@ -1521,20 +1570,27 @@ function! GITLOG_MakeDirectory(path_name,root_id,parent_item)
 	for item in current_dir
 		if item[0] != '.' || s:show_local_dot_files == 1
 			" do we have a directory
-			if isdirectory(a:path_name . item)
-				let type = 'tree'
-			else
-				let type = 'blob'
-			endif
-
+			let add = 0
 			let name = fnameescape(item)
 
-			if ((type == 'tree' && index(g:GITLOG_ignore_directories, name) == -1) || (type == 'blob' && index(g:GITLOG_ignore_suffixes, fnamemodify(name, ":e")) == -1))
+			if isdirectory(s:root_list[a:root_id].root_dir . a:path_name . name)
+				if getftype(s:root_list[a:root_id].root_dir . a:path_name . name) == 'link'
+					let type = 'link'
+				else
+					let type = 'tree'
+				endif
 
+				let add = index(g:GITLOG_ignore_directories, name) == -1
+			else
+				let type = 'blob'
+				let add = index(g:GITLOG_ignore_suffixes, fnamemodify(name, ":e")) == -1
+			endif
+
+			if (add)
 				let new_item = {	'name'		: name,
 								\	'status'	: 'closed',
 								\   'marker'	: s:GITLOG_Added,
-								\	'commit'	: '0',
+								\	'hash'		: '0',
 								\	'type'		: type,
 								\	'root_id'	: a:root_id,
 								\	'child'		: 0,
@@ -1562,7 +1618,7 @@ endfunction																	"}}}
 "
 function! s:GITLOG_UpdateTreeWindow(output, directory, id, level)
 	for item in s:directory_list[a:id]
-		if item.type == 'tree' || item.type == 'commit'
+		if item.type == 'tree' || item.type == 'commit' || item.type == 'link'
 			let s_marker = ''
 
 			if (item.status == 'closed')
@@ -1573,6 +1629,14 @@ function! s:GITLOG_UpdateTreeWindow(output, directory, id, level)
 
 			if (item.type == 'commit')
 				let e_marker = s:GITLOG_SubModule
+
+			elseif (item.type == 'link')
+				if has_key(item, 'no_follow') && item.no_follow == 1
+					let e_marker = s:GITLOG_BadLink
+				else
+					let e_marker = s:GITLOG_Link
+				endif
+
 			else
 				let e_marker = ''
 			endif
@@ -1580,7 +1644,7 @@ function! s:GITLOG_UpdateTreeWindow(output, directory, id, level)
 			let s_marker = item.marker
 
 			if g:GITLOG_show_only_changes == 0 || item.marker != s:GITLOG_Same
-				call add(a:output,a:level . marker . item.name . ' ' . s_marker . e_marker)
+				call add(a:output,a:level . marker . item.name . ' ' . e_marker . s_marker)
 				let item.lnum = len(a:output)
 
 				if (item.status == 'open')
@@ -1593,7 +1657,7 @@ function! s:GITLOG_UpdateTreeWindow(output, directory, id, level)
 	endfor
 
 	for item in s:directory_list[a:id]
-		if item.type != 'tree' && item.type != 'commit'
+		if item.type != 'tree' && item.type != 'commit' && item.type != 'link'
 			let marker = item.marker
 
 			if g:GITLOG_show_only_changes == 0 || item.marker != s:GITLOG_Same
@@ -1674,6 +1738,12 @@ function! GITLOG_ActionRefreshRootDirectory()
 	" refresh the root directory - just throw everything away
 	let s:directory_list = [[]]
 	let x = {'root_id':1, 'marker':s:GITLOG_Same}
+	if g:GITLOG_walk_full_tree == 1
+		echohl WarningMsg
+		echomsg "Refreshing the root dir - this might take a while."
+		echohl Normal
+	endif
+
 	let s:tree_root = s:GITLOG_BuildFullTree('',x, g:GITLOG_walk_full_tree)
 	let s:current_root = s:tree_root
 
@@ -1694,7 +1764,7 @@ function! GITLOG_ActionRefreshCurrentNode()
 	let found_item = s:GITLOG_FindListItem(s:current_root,line("."))
 
 	if found_item != {}
-		if (found_item.type == 'tree' || found_item.type == 'commit')
+		if (found_item.type == 'tree' || found_item.type == 'commit' || found_item.type == 'link')
 			let item = found_item
 			let path = s:found_path . item.name . '/'
 		else
@@ -1798,8 +1868,8 @@ function! GITLOG_ActionSelectCurrentItem()
 	let s:found_path = ''
 	let found_item = s:GITLOG_FindListItem(s:current_root,line("."))
 
-	if found_item != {}
-		if (found_item.type == 'tree' || found_item.type == 'commit')
+	if found_item != {} && (!has_key(found_item, 'no_follow') || found_item.no_follow == 0)
+		if (found_item.type == 'tree' || found_item.type == 'commit' || found_item.type == 'link')
 			if found_item.status == 'open'
 				let found_item.status = 'closed'
 			else
@@ -1812,13 +1882,13 @@ function! GITLOG_ActionSelectCurrentItem()
 						let new_path = s:found_path . found_item.name . '/'
 					endif
 
-					if found_item.type == 'tree'
-						let found_item.child = GITLOG_MakeDirectory(new_path,found_item.root_id, found_item)
+					if found_item.type == 'tree' || found_item.type == 'link'
+						let found_item.child = s:GITLOG_BuildFullTree(new_path, found_item, g:GITLOG_walk_full_tree)
 					else
 						call s:GITLOG_GetSubModuleDetails(new_path,found_item)
 
 						if (found_item.root_id > 1)
-							let found_item.child = GITLOG_MakeDirectory(new_path,found_item.root_id, found_item)
+							let found_item.child = s:GITLOG_BuildFullTree(new_path, found_item, g:GITLOG_walk_full_tree)
 						endif
 					endif
 				endif
