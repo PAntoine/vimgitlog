@@ -416,7 +416,11 @@ function!	GITLOG_ToggleWindows(...)
 			call s:GITLOG_OpenTreeWindow()
 		endif
 
-		let s:gitlog_last_state = s:gitlog_loaded
+		if exists("s:gitlog_loaded")
+			let s:gitlog_last_state = s:gitlog_loaded
+		else
+			let s:gitlog_last_state = g:GITLOG_default_mode
+		endif
 	else
 		unlet s:gitlog_loaded
 		call GITLOG_CloseWindows()
@@ -831,7 +835,7 @@ endfunction																"}}}
 "	nothing
 "
 function! s:GITLOG_OpenTreeWindow()
-	let found_item = {'lnum':1}
+	let found_item = {}
 
 	if bufwinnr(bufnr("__gitlog__")) != -1
 		" window already open - just go to it
@@ -872,13 +876,13 @@ function! s:GITLOG_OpenTreeWindow()
 	" do we need to open a directory
 	if s:revision_path != ''
 		let found_item = s:GITLOG_OpenTreeToFile(s:revision_path)
-
-		if found_item == {}
-			let found_item = {'lnum':1}
-		endif
 	endif
 
 	" now update the window
+	if !has_key(found_item, "lnum")
+		let found_item.lnum = 1
+	endif
+
 	call GITLOG_RedrawTreeWindow(found_item.lnum)
 
 	" set the keys on the tree window

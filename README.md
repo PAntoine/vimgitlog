@@ -1,7 +1,7 @@
 vimgitlog
 =========
 
-Version: 4.0.1
+Version: 4.0.2
 
 Git Tree, Log and Diff plugin for vim. 
 
@@ -69,20 +69,7 @@ Major Changes
 
 Bug Fix Release.
 
-A Couple of new features have slipped in, but purely as side-effects of fixing bugs.
-- Fixed symlink looping issue.
-  Code now detects when a symlink causes a loop. This is not highlighted with a 'B' next to the
-  directory name. This is marked as `no_follow` and the link cannot be opened. Also links are
-  now highlighted as we 
-
-- Fixed issue with vim loaded in sub-directory not correctly routing.
-  This fix is only possible as git has added "-C" to the command line and commands can be re-routed
-  in git and the parts are now correctly formatted. Otherwise using "--work-dir" does not do what
-  you think it does, if you are in a sub-directory of the tree then it will return relative paths.
-  With the '-C' option it returns paths from the root, this are predictable and no expensive and
-  complicated processing is required.
-
-- Fixed Documentation and syntax highlighting problems.
+- Open the gitlog window with a file open and the vimlog crashes.
 
 Honourable Mentions
 -------------------
@@ -93,6 +80,17 @@ to have GITLOG open more of my day so don't want to have to change plugins.
 
 Issues
 ------
+
+- Following bugs are known, and there fixes that will be released when they are tested. One is new
+(the missing dot files) but the rest are old, and only became known when testing the new features.
+Fixes have been done but are tied up with the code to speed up the full walk, which is blocking the
+main new feature (the reason for all this work). Sorry for any problems caused with the current change
+sets.
+
+- KNOWN BUG: If object type is different repo vs local does not add two items.
+- KNOWN BUG: Local dot files are missing.
+- KNOWN BUG: Empty directories now get a rubbish file added.
+- KNOWN BUG: Toggle resets branch state.
 
 - There is a minor problem with GitLog getting confused when diff's on different files are done one after
 another. I would simply suggest pulling down GitLog and then either opening another file, or toggle the
@@ -119,6 +117,6 @@ TODO
 
 Licence and Copyright
 ---------------------
-                    Copyright (c) 2012-2013 Peter Antoine
+                    Copyright (c) 2012-2015 Peter Antoine
                              All rights Reserved.
                      Released Under the Artistic Licence
