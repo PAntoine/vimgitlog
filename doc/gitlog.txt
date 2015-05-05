@@ -9,15 +9,15 @@
                                            `---'                           ~
 
 
-Author:	  Peter Antoine
-Date:     March 20, 2015
-Version:  4.0.2
+Author:      Peter Antoine
+Date:     May 4, 2015
+Version:  5.0.0
 HomePage: https://github.com/PAntoine/vimgitlog
 
 
 For instructions on installing this file, type:
 >
-	:help add-local-help |add-local-help| inside Vim.
+    :help add-local-help |add-local-help| inside Vim.
 <
 
 ==============================================================================
@@ -115,7 +115,7 @@ commit will change.
 
 
 ==============================================================================
-4. Git History Searching								*gitlog-searching*
+4. Git History Searching                                *gitlog-searching*
 
 GitLog has the ability to allow for searching the historical commits in the
 repository for text strings. GitLog allows for this to be done either on the
@@ -154,7 +154,7 @@ The search windows can be pulled down with the rest by toggling the GitLog
 windows.
 
 ==============================================================================
-5. Git History Tree								*gitlog-tree*
+5. Git History Tree                                *gitlog-tree*
 
 GitLog has the ability to allow to display the selected commit in a tree format.
 This will be a tree of the current repository. It will open and select the 
@@ -299,85 +299,112 @@ obvious overhead - but this only happens if the tree has not been walked at
 least once before. Toggling is quite instantaneous after this happens.
 
 ==============================================================================
-6. Mapping GitLog Functions                      	*gitlog-mapping*
+6. Mapping GitLog Functions                          *gitlog-mapping*
 
 There is only one function that really required mapping and that is the
 toggle function. As this is a single operation function I would assume that
 you would attach it to a function key, so the following mapping would be useful
 >
-	:map <silent> <f7> :call GITLOG_FlipWindows()<cr>
-	:map <silent> <c-f7> :call GITLOG_ToggleWindows()<cr>
+    :map <silent> <f7> :call GITLOG_FlipWindows()<cr>
+    :map <silent> <c-f7> :call GITLOG_ToggleWindows()<cr>
 <
 This will install GITLOG on the <f7> key.
 
 ==============================================================================
-7. Configuring GitLog									*gitlog-config*
+7. Configuring GitLog                               *gitlog-config*
 
 There is only one function that really required mapping and that is the
 toggle function. As this is a single operation function I would assume that
 you would attach it to a function key, so the following mapping would be useful
 
-g:GITLOG_walk_full_tree							*g:GITLOG_walk_full_tree*
+g:GITLOG_walk_full_tree                             *g:GITLOG_walk_full_tree*
     When opening the tree window if this is set to '1' then the whole
     tree will be walked. It can take a long time to do the walk but
     takes the hit in one go. But more important to be able show only
     the differences will need for a full walk. [0]
 
-g:GITLOG_directory_default						*g:GITLOG_directory_default*
+g:GITLOG_directory_default                          *g:GITLOG_directory_default*
     When opening a full tree what should the default mode be for the directory
-	that is opened. This mode only really effects the full tree mode as in the
-	incremental mode having open children makes no sense. This does not have
-	any effect in non-full mode. ['closed']
+    that is opened. This mode only really effects the full tree mode as in the
+    incremental mode having open children makes no sense. This does not have
+    any effect in non-full mode. ['closed']
 
-g:GITLOG_check_file_deferences					*g:GITLOG_check_file_deferences*
+g:GITLOG_check_file_deferences                      *g:GITLOG_check_file_deferences*
     This makes the building of the tree faster. If set it means that the file
     contents are not checked. it does reduce the functionality if you are
     looking for merge checking and other things, but on big trees it can save
     a lot of time. This defaults to checking to be backwards compatible.[1]
 
-g:GITLOG_show_only_changes						*g:GITLOG_show_only_changes*
+g:GITLOG_show_only_changes                          *g:GITLOG_show_only_changes*
     This feature will cause only the files and directories that have changes
     that is files that have been added, deleted or amended (if file checking
     is on) and for directories that have a changed file (as just mentioned).
     This defaults to show all for backwards compatibility [0]
 
-g:GITLOG_ignore_suffixes							*g:GITLOG_ignore_suffixes*
+g:GITLOG_ignore_suffixes                            *g:GITLOG_ignore_suffixes*
     This switches on the pruning of the files. It will allow for a list of
-	file suffixes that are going to be ignored when the tree is built. If
-	the suffix list is changed then the tree will need to be fully rebuilt.
-	The defaults are backward compatible.  []
+    file suffixes that are going to be ignored when the tree is built. If
+    the suffix list is changed then the tree will need to be fully rebuilt.
+    The defaults are backward compatible.  []
 
-g:GITLOG_ignore_directories						*g:GITLOG_ignore_directories*
+g:GITLOG_ignore_directories                         *g:GITLOG_ignore_directories*
     This filters out specified directory names. That is all directories with
-	these names will not be shown in the tree. As with the suffixes if the
-	list is changed then the tree will need to be rebuilt. []
+    these names will not be shown in the tree. As with the suffixes if the
+    list is changed then the tree will need to be rebuilt. []
 
+g:GITLOG_support_sub_git                            *g:GITLOG_support_sub_git*
+    This allows for sub-git directories to be discovered. It will enumerate
+    them. [1]
+
+g:GITLOG_support_sub_repo                            *g:GITLOG_support_sub_repo*
+    This turns on repo support. I have no idea why you would turn it off. But
+    incase they are useen bugs.  [1]
+
+let g:GITLOG_show_hidden_files                        *g:GITLOG_show_hidden_files*
+    This allows for hidden files to be turned off/on. The default is to not
+    show hidden files. For the moment hidden files are '.' (dot) files. [0]
 
 ==============================================================================
 8. History                                       *gitlog-history*
+  5.0.0: May 4, 2015
+         PA: PERFORMANCE: Tree walking time substantially better.
+         PA: PERFORMANCE: Reduced the amount of unrequired git accesses.
+         PA: NEW_FEATURE: Properly coalescing of the repo and local directory names.
+         PA: NEW_FEATURE: Make reset head also reset branch.
+         PA: NEW_FEATURE: Goto latest on current selected branch.
+         PA: NEW_FEATURE: sub-git trees supported.
+         PA: NEW_FEATURE: Handling of Non-git trees better.
+         PA: NEW_FEATURE: Repo support.
+         PA: NEW_FEATURE: additional command.
+         PA: BUG: If object type is different repo vs local add two items.
+         PA: BUG: Added back local dot files (woops!).
+         PA: BUG: Removed rubbish file added in empty directories.
+         PA: BUG: Fixed toggle resetting branch state.
+         PA: BUG: Syntax Fixes.
+
   4.0.2: Mar 20, 2015
          PA: BUG: Crashes when opened with a file open.
 
   4.0.1: Mar 17, 2015
          PA: BUG: Fixed issue with sym-link loops.
-		 PA: BUG: Fixed issue with trees not properly displaying in sub-dirs.
-		 PA: BUG: Fixed issue with documentation being wrong.
-		 PA: BUG: Fixed syntax highlighting.
-		 PA: BUG: Fixed manual opening of sub-dir was not correctly filtering.
-		 PA: NEW_FEATURE: Not walking links that loop.
-		 PA: NEW_FEATURE: Link highlighting.
+         PA: BUG: Fixed issue with trees not properly displaying in sub-dirs.
+         PA: BUG: Fixed issue with documentation being wrong.
+         PA: BUG: Fixed syntax highlighting.
+         PA: BUG: Fixed manual opening of sub-dir was not correctly filtering.
+         PA: NEW_FEATURE: Not walking links that loop.
+         PA: NEW_FEATURE: Link highlighting.
 
   4.0.0: Mar 15, 2015
          PA: NEW FEATURE: Show only changed files.
-		 PA: NEW FEATURE: Filter files and directories by name.
-		 PA: NEW FEATURE: Walk Full Tree.
-		 PA: NEW FEATURE: Ability to not check files.
-		 PA: Fixed for git behaviour change observed with git 1.9.+
-		 PA: Reorganised the code base.
+         PA: NEW FEATURE: Filter files and directories by name.
+         PA: NEW FEATURE: Walk Full Tree.
+         PA: NEW FEATURE: Ability to not check files.
+         PA: Fixed for git behaviour change observed with git 1.9.+
+         PA: Reorganised the code base.
 
   3.1.1: June 27, 2013
-  		 PA: Removed Scrolloff - did not know it was global and added as redraw to fix.
-		 PA: A couple of syntax fixes.
+         PA: Removed Scrolloff - did not know it was global and added as redraw to fix.
+         PA: A couple of syntax fixes.
 
   3.1.0: Xxx nn, 2013
          PA: Changed <cr> on code tree to open local (also added 'p' for previous version).
@@ -391,35 +418,35 @@ g:GITLOG_ignore_directories						*g:GITLOG_ignore_directories*
 
   2.1.2: May 21, 2013
          PA: Fixed tree open.
-		 PA: Fixed being able to open in any default mode.
-		 PA: Made open tree view a bit better.
+         PA: Fixed being able to open in any default mode.
+         PA: Made open tree view a bit better.
 
   2.1.1: May 03, 2013
          PA: Fixed silly start-up issue.
 
   2.1.0: March 29, 2013
          PA: Fixed empty directory issue.
-		 PA: Added 'refresh' functions for tree.
+         PA: Added 'refresh' functions for tree.
 
   2.0.2: March 26, 2013
          PA: Released wrong version and broke toggle and syntax.
 
   2.0.0: March 26, 2013
          PA: Added the Repository History Tree.
-		 PA: Also fixed minor issue with the branch selection being wrong.
+         PA: Also fixed minor issue with the branch selection being wrong.
 
   1.3.1: March 8, 2013
          PA: Fixed problem with marge branches not being diff'ed and fixed syntax
-		 highlighting to handle the branches.
+             highlighting to handle the branches.
 
   1.3.0: January 8, 2013
-  		 PA: Re-wrote the way that the files were read so it works in console mode.
+         PA: Re-wrote the way that the files were read so it works in console mode.
 
   1.2.0: December 14, 2012
          PA: Added repository search capability.
-		 PA: Added syntax highlighting.
-		 PA: Fixed the way that buffers are created to stop leaking buffers.
-		 PA: Fixed the way it closes buffers to stop it closing the editor.
+         PA: Added syntax highlighting.
+         PA: Fixed the way that buffers are created to stop leaking buffers.
+         PA: Fixed the way it closes buffers to stop it closing the editor.
 
   1.1.2: December 12, 2012
          PA: Fixed broken plugin. Order of parameter setting caused by the last fix,

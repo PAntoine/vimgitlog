@@ -44,30 +44,37 @@ hi link glSearchLineNumber		LineNr
 hi link glSearchMessage			Comment
 
 "highlight the log window
-syn region	glLog				start="^[| ]*\*[| ]* \x\x\x\x\x\x\x\s[0-9A-Za-z\/\._\-#@]" end="$"	contains=glLogHash,glCruft,glLogMessage,@NoSpell keepend
-syn match	glBranchMessage		"\s[0-9A-Za-z\/\._\-#@]\+"			contained containedin=glLog,glBranchLine
-syn match	glLogHash			" \x\x\x\x\x\x\x"					contained containedin=glLog nextgroup=glBranchMessage
+syn region	glLog				start="^[| ]*\*[| ]* \x\x\x\x\x\x\x\s\+[0-9A-Za-z\/\._\-#@]" end="$"	contains=glLogHash,glCruft,glLogMessage,@NoSpell keepend
+syn match	glBranchMessage		"\s[0-9A-Za-z\/\._\-#@\[\]()'":\*~]\+"			contained containedin=glLog,glBranchLine
+syn match	glLogHash			" \x\x\x\x\x\x\x"							contained containedin=glLog nextgroup=glBranchMessage
 
-syn region	glBranchHeader		start="^branch:" end="$"			keepend contains=glBranch,glBranchName
+syn region	glBranchHeader		start="^branch:" start="^file:" end="$"		keepend contains=glBranch,glFile,glBranchName
 syn keyword	glBranch			contained branch
+syn keyword	glFile				contained file
 syn match	glBranchName		": [0-9A-Za-z\/\._\-#]\+"			contained containedin=glBranchHeader
 
 hi link glLog				Normal
 hi link glCruft				Normal
 hi link glLogHash			Character
 hi link glBranch			Identifier
+hi link glFile				Identifier
 hi link glBranchName		Special
 hi link glBranchMessage		Comment
 
 " Tree Window
-syn region	glTreeHeader	start="^commit:" end="$"		keepend contains=glBranch,glBranchName,glLogHash
+syn region	glTreeHeader	start="^commit:" end="$"		keepend contains=glHCommit,glBranchName,glLogHash
+syn keyword	glHCommit		contained commit
+
+hi link glHCommit			Identifier
 
 syn region	glDirLine		start="^\s*[▸▾>v] " end="$"		keepend contains=glMarker,glDirName,@NoSpell
 syn match	glMarker		"▸ "							contained containedin=glDirLine nextgroup=glDirName
 syn match	glMarker		"▾ "							contained containedin=glDirLine nextgroup=glDirName
 syn match	glMarker		"> "							contained containedin=glDirLine nextgroup=glDirName
 syn match	glMarker		"v "							contained containedin=glDirLine nextgroup=glDirName
-syn match	glDirName		"[0-9A-Za-z\._#\-]\+"			contained containedin=glDirLine nextgroup=glStateModule,glStateLink,glStateBadLink,glStateNew,glStateDeleted,glStateChanged contains=@NoSpell
+syn match	glDirName		"[0-9A-Za-z\._#\-\+]\+"			contained containedin=glDirLine nextgroup=glStateModule,glStateSubGit,glStateSubRepo,glStateLink,glStateBadLink,glStateNew,glStateDeleted,glStateChanged contains=@NoSpell
+syn match 	glStateSubRepo	" [r]"							contained containedin=glDirLine nextgroup=glStateNew,glStateDeleted,glStateChanged contains=@NoSpell
+syn match 	glStateSubGit	" [g]"							contained containedin=glDirLine nextgroup=glStateNew,glStateDeleted,glStateChanged contains=@NoSpell
 syn match 	glStateModule	" [m]"							contained containedin=glDirLine nextgroup=glStateNew,glStateDeleted,glStateChanged contains=@NoSpell
 syn match 	glStateLink		" [l]"							contained containedin=glDirLine nextgroup=glStateNew,glStateDeleted,glStateChanged contains=@NoSpell
 syn match 	glStateBadLink	" [łB]"							contained containedin=glDirLine nextgroup=glStateNew,glStateDeleted,glStateChanged contains=@NoSpell
@@ -90,5 +97,7 @@ hi 		glStateAdded		term=bold ctermfg=Green		guifg=Green
 hi 		glStateLink			term=bold ctermfg=Yellow	guifg=Yellow
 hi 		glStateBadLink		term=bold ctermfg=Red		guifg=Red
 hi link	glStateModule		Comment
+hi link	glStateSubGit		Comment
+hi link	glStateSubRepo		Comment
 hi link	glStateSame			String
 
