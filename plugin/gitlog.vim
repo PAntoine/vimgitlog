@@ -2083,7 +2083,6 @@ endfunction																	"}}}
 " returns:
 "	nothing
 "
-let s:big_string = "                                                                                                           "
 function! s:GITLOG_MapGitChanges(git_change_tree, parent_item)
 	for item in keys(a:git_change_tree.items)
 		let found = 0
@@ -2101,33 +2100,38 @@ function! s:GITLOG_MapGitChanges(git_change_tree, parent_item)
 						let entry.marker = s:GITLOG_Changed
 					endif
 				else
-"					if entry.marker != s:GITLOG_Added && entry.marker != s:GITLOG_Deleted
-						let entry.marker = a:git_change_tree.items[item].status
-"					endif
+					let entry.marker = a:git_change_tree.items[item].status
 				endif
-				
+	
 				let entry.root_id = a:git_change_tree.items[item].root_id
 				let found = 1
 				break
 
 			elseif item <# entry.name
 				" Ok, we have gone past where it should be in the test. Lets add it in.
-				let new_item = {	'name'		: item,
-								\	'status'	: g:GITLOG_directory_default,
-								\   'marker'	: a:git_change_tree.items[item].status,
-								\	'type'		: 'tree',
-								\	'root_id'	: a:git_change_tree.items[item].root_id,
-								\	'child'		: 0,
-								\	'parent'	: a:parent_item}
+				if (a:git_change_tree.items[item].type != 'D' && index(g:GITLOG_ignore_suffixes, fnamemodify(item,':e')) == -1) ||
+				\  (a:git_change_tree.items[item].type == 'D' && index(g:GITLOG_ignore_directories, item) == -1)
+					let new_item = {	'name'		: item,
+									\	'status'	: g:GITLOG_directory_default,
+									\   'marker'	: a:git_change_tree.items[item].status,
+									\	'type'		: 'tree',
+									\	'root_id'	: a:git_change_tree.items[item].root_id,
+									\	'child'		: 0,
+									\	'parent'	: a:parent_item}
 
-				call insert(s:directory_list[a:parent_item.child], new_item, item_id)
+					call insert(s:directory_list[a:parent_item.child], new_item, item_id)
 
-				if a:git_change_tree.items[item].type == 'D'
-					call add(s:directory_list, [])
-					let new_item.child = len(s:directory_list) - 1
-					call s:GITLOG_MapGitChanges(a:git_change_tree.items[item], new_item)
-				else
-					let new_item.type = 'blob'
+					if index(g:GITLOG_ignore_suffixes, fnamemodify(item,':e')) != -1
+						echomsg "Found:" . a:git_change_tree.items[item].status
+					endif
+
+					if a:git_change_tree.items[item].type == 'D'
+						call add(s:directory_list, [])
+						let new_item.child = len(s:directory_list) - 1
+						call s:GITLOG_MapGitChanges(a:git_change_tree.items[item], new_item)
+					else
+						let new_item.type = 'blob'
+					endif
 				endif
 
 				let found = 1
@@ -2138,22 +2142,25 @@ function! s:GITLOG_MapGitChanges(git_change_tree, parent_item)
 		endwhile
 
 		if found == 0
-			let new_item = {	'name'		: item,
-							\	'status'	: g:GITLOG_directory_default,
-							\   'marker'	: s:GITLOG_Deleted,
-							\	'type'		: 'tree',
-							\	'root_id'	: a:git_change_tree.items[item].root_id,
-							\	'child'		: 0,
-							\	'parent'	: a:parent_item}
+			if (a:git_change_tree.items[item].type != 'D' && index(g:GITLOG_ignore_suffixes, fnamemodify(item,':e')) == -1) ||
+			\  (a:git_change_tree.items[item].type == 'D' && index(g:GITLOG_ignore_directories, item) == -1)
+				let new_item = {	'name'		: item,
+								\	'status'	: g:GITLOG_directory_default,
+								\   'marker'	: a:git_change_tree.items[item].status,
+								\	'type'		: 'tree',
+								\	'root_id'	: a:git_change_tree.items[item].root_id,
+								\	'child'		: 0,
+								\	'parent'	: a:parent_item}
 
-			" item was not found - must have been deleted add it the list
-			call add(s:directory_list[a:parent_item.child], new_item)
-			if a:git_change_tree.items[item].type == 'D'
-				call add(s:directory_list, [])
-				let new_item.child = len(s:directory_list) - 1
-				call s:GITLOG_MapGitChanges(a:git_change_tree.items[item], new_item)
-			else
-				let new_item.type = 'blob'
+				" item was not found - must have been deleted add it the list
+				call add(s:directory_list[a:parent_item.child], new_item)
+				if a:git_change_tree.items[item].type == 'D'
+					call add(s:directory_list, [])
+					let new_item.child = len(s:directory_list) - 1
+					call s:GITLOG_MapGitChanges(a:git_change_tree.items[item], new_item)
+				else
+					let new_item.type = 'blob'
+				endif
 			endif
 		endif
 	endfor

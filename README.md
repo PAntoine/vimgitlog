@@ -1,7 +1,7 @@
 vimgitlog
 =========
 
-Version: 5.0.0
+Version: 5.0.1
 
 Git Tree, Log and Diff plugin for vim. 
 
@@ -157,17 +157,6 @@ previous way of working.
 
 Issues
 ------
-
-- Following bugs are known, and there fixes that will be released when they are tested. One is new
-(the missing dot files) but the rest are old, and only became known when testing the new features.
-Fixes have been done but are tied up with the code to speed up the full walk, which is blocking the
-main new feature (the reason for all this work). Sorry for any problems caused with the current change
-sets.
-
-- KNOWN BUG: If object type is different repo vs local does not add two items.
-- KNOWN BUG: Local dot files are missing.
-- KNOWN BUG: Empty directories now get a rubbish file added.
-- KNOWN BUG: Toggle resets branch state.
 
 - There is a minor problem with GitLog getting confused when diff's on different files are done one after
 another. I would simply suggest pulling down GitLog and then either opening another file, or toggle the

@@ -10,8 +10,8 @@
 
 
 Author:      Peter Antoine
-Date:     May 4, 2015
-Version:  5.0.0
+Date:     May 16, 2015
+Version:  5.0.1
 HomePage: https://github.com/PAntoine/vimgitlog
 
 
@@ -366,6 +366,9 @@ let g:GITLOG_show_hidden_files                        *g:GITLOG_show_hidden_file
 
 ==============================================================================
 8. History                                       *gitlog-history*
+  5.0.0: May 16, 2015
+         PA: BUG: Fixed not ignoring files, directories when doing a full walk.
+
   5.0.0: May 4, 2015
          PA: PERFORMANCE: Tree walking time substantially better.
          PA: PERFORMANCE: Reduced the amount of unrequired git accesses.
