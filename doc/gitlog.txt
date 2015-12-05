@@ -1,4 +1,4 @@
-*gitlog.txt*  For Vim version 7.3
+*gitlog.txt*  For Vim version 7.4
 
                                            
         ,----.   ,--.  ,--.  ,--.                                          ~
@@ -10,8 +10,8 @@
 
 
 Author:      Peter Antoine
-Date:     May 16, 2015
-Version:  5.0.1
+Date:     Dec 5, 2015
+Version:  5.1.0
 HomePage: https://github.com/PAntoine/vimgitlog
 
 
@@ -278,6 +278,18 @@ Reset Commit: <c-h>
 This will reset the commit to HEAD. After some of the above commands the 
 commit will change. 
 
+Tree searches ']c', '[c', '[a', ']a':
+
+These commands will search the tree and find changes. The 'c' versions of the
+function will find files that have been amended. The 'a' variation will also
+find the files that have been added or delete to the tree.
+
+These searches start and end at the same level in the tree. Also the search
+will continue from the last place in the tree that previous invocation ended.
+
+With the |g:GITLOG_open_sub_on_search| flag set, it will open sub directories
+and populate them. This can take a long time on big trees, be warned.
+
 5.3 Selecting a Commit Tree
 
 If you want to see the tree for any known commit. Goto the Log window select the
@@ -360,12 +372,36 @@ g:GITLOG_support_sub_repo                            *g:GITLOG_support_sub_repo*
     This turns on repo support. I have no idea why you would turn it off. But
     incase they are useen bugs.  [1]
 
-let g:GITLOG_show_hidden_files                        *g:GITLOG_show_hidden_files*
+g:GITLOG_show_hidden_files                            *g:GITLOG_show_hidden_files*
     This allows for hidden files to be turned off/on. The default is to not
     show hidden files. For the moment hidden files are '.' (dot) files. [0]
 
+g:GITLOG_show_branch_window                           *g:GITLOG_show_branch_window*
+    This will show the branch window. If you do not use it then switching
+	the branch window off on startup gives you more space in big directory
+	listings. The branch window can be toggled so this is not loss. [1]
+
+g:GITLOG_open_sub_on_search                           *g:GITLOG_open_sub_on_search*
+    When using the tree search functions this will allow the search
+	to open and update any sub directories that it finds. This can
+	make the search quite long as a lot of git accesses will be done.
+	But this makes the search useful. [1]
+
 ==============================================================================
 8. History                                       *gitlog-history*
+  5.1.0: Dec 05, 2015
+         PA: NEW_FEATURE: Toggle branch window.
+         PA: NEW_FEATURE: Toggle Hidden files.
+         PA: NEW_FEATURE: Jump to next change.
+         PA: NEW_FEATURE: Add version to make life easier
+         PA: NEW_FEATURE: Goto Previous Change
+         PA: NEW_FEATURE: Goto Next Change
+         PA: BUG: Not all hashes are 7 chars (and couple of syntax fixes)
+         PA: BUG: correctly find sub-directories when not started at root
+         PA: BUG: correctly find files when gitlog started in sub-dir
+         PA: BUG: Redraw messed up git tree.
+		 PA: BUG: tree open did not start at first tree item.
+
   5.0.0: May 16, 2015
          PA: BUG: Fixed not ignoring files, directories when doing a full walk.
 

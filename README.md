@@ -1,7 +1,7 @@
 vimgitlog
 =========
 
-Version: 5.0.1
+Version: 5.1.0
 
 Git Tree, Log and Diff plugin for vim. 
 
@@ -29,21 +29,29 @@ In the log window \_\_gitlog\_\_ the following commands work:
 
 In the tree window \_\_gitlog\_\_ the following commands work:
 
-    l    		opens the local version of the file, if it exists.
-    d    		diff's the tree view of the file against the local version.
-    r    		refreshes the tree element that it is on.
-    R    		refreshes the root directory.
-    h    		show the history of the current file.
-    p    		show the previous version of the file.
-    a    		open the current item and all it's children.
-    A    		open the whole tree.
-    x    		close the current tree or the parent of the current tree.
-    X    		close the whole tree.
-    C    		toggle 'only changes only' and rebuild the tree.
-    <cr>    	opens the local version of the file, if it exists.
-    <c-d>    	pull down all the diff windows.
-    <c-h>    	reset the current commit to HEAD and current working branch.
-    <c-l>    	reset the current commit to lastest on current branch.
+    l    		opens the local version of the file, if it exists.",
+    d    		diff's the tree view of the file against the local version.",
+    r    		refreshes the tree element that it is on.",
+    R    		refreshes the root directory.",
+    h    		show the history of the current file.",
+    p    		show the previous version of the file.",
+    a    		open the current item and all it's children.",
+    A    		open the whole tree (toggles).",
+    x    		close the current tree or the parent of the current tree.",
+    X    		close the whole tree.",
+    C    		toggle 'only changes only' and rebuild the tree.",
+    T    		go back to the log view.",
+    b    		Toggle branch window.",
+    s    		Toggle Secret (hidden) files.",
+    <cr>    	opens the local version of the file, if it exists.",
+    <c-d>    	pull down all the diff windows.",
+    <c-h>    	reset the current commit to HEAD and current working branch.",
+    <c-l>    	reset the current commit to latest on current branch.",
+    ]c    	    goto next changed item.",
+    [c    	    goto previous changed item.",
+    ]a    	    goto next changed/added/deleted item."
+    [a    	    goto previous changed/added/deleted item."
+
 
 In the search window \_\_gitsearch\_\_ the two following commands work:
 
@@ -112,55 +120,54 @@ Essentially the same with walk turned off. It will take about 2-7 mins to build 
 Android source (including changes). If you don't mind that wait (I don't as the useful features that
 you get will a full walk, are - well useful and this I do at start of day.
 
+Very Big Trees (repo - say the Android Source Tree):
+```
+    :let g:GITLOG_default_mode = 2
+    :let g:GITLOG_walk_full_tree = 0
+    :let g:GITLOG_show_hidden_files = 0
+	:let g:GITLOG_show_branch_window = 0
+	:map <silent> <f7> :call GITLOG_ToggleWindows()<cr>
+    :map <silent> <f9> let g:GITLOG_walk_full_tree = 1;call GITLOG_FlipWindows();<let g:GITLOG_walk_full_tree = 0;cr>
+    :let g:GITLOG_ignore_suffixes=['swp', 'swn', 'pyc', 'o', 'zip', 'tgz', 'gz']
+    :let g:GITLOG_ignore_directories = ['.git', 'out']
+```
+As for the big tree but not showing the branch window as that is pointless (esp. with repo). Also added
+is `<f9>` as you can cd down to the sub-project that you are looking at and press that. It will then walk the
+project and you can then pop-up the branch window if required. It works for me.
+
+
 Obviously, choose the suffixes of your choice. As I mostly write c for day job and python for projects
 these are suffixes that I have chosen.
 
 Major Changes
 -------------
 
-REPO Support
+## Tree Searching ##
 
-This now supports Google REPO which is a release management system built on-top of git. It essentially
-has a load of git repositories strung together.
+The ability to find changes in the tree especially big trees really helps speed up development. So this feature has
+been added. This works similar to the way that the diff goto next change works, obviously that is deliberate. The
+searches will continue from the last result. It starts and end at the tree level that the search started at, this
+so in big trees the search does not take forever. There are two search commands, types 'c' for changes and 'a' for
+any. Any will find any change in the tree and 'c' will only find the changes.
 
-Nested Git Repositories
+The search only resets on it not finding anything. It does not loop.
 
-These basically comes with REPO support as this is required for the above.
+## Toggling Hidden files and Branch Window ##
 
-Tree Build re-write
+The ability to toggle the list of hidden files and the branch window has been added. The hidden files you can work
+out why this would be useful. The branch window mostly as it is useless when in repo mode as it does not have a branch.
+This is not actually true, but branching in repo is not clean and the current root branch may not be the branch you
+want and the repos tend to be detached heads. I think the repo may have a manifest that will allow for the branch
+window to be more useful. But that can wait.
 
-As the above are HUGE repositories gigabytes in size, the old way of building the tree was simply not
-fast enough (for example a Kernel tree 18mins). This is too usable, so the thing has been re-written
-levering the in-built knowledge that git keeps in the index about the state of the file system to really
-speed up the tree build. The current build takes under 2 mins to build a full REPO tree (that has more
-than one kernel in it).
+## Bug Fixes and Tidy ups ##
 
-Re-jiggs to the commands
+Lots a silly bugs to do with where we are in the repository when the gvim instance was started. Basically was not
+taking that into account when doing most things. These should all be fixed now. Fixed the syntax tree as
 
-The commands have been rejigged, that is slightly improved so that they done fail and lie. But mostly
-to be a bit more sensible. They should not be any changes that break workflow, the main commands will
-work the same, but some new ones should aid navigation.
-
-New commands for using the full tree walk. Things like open all and close all. These work well will
-the show changes option.
-
-Random Fixes
-
-Some code got broken and some changes in the way that git behaves (or the fact that I was misusing some
-of the git commands) means that some of the features were not working. I think they all are.
-
-Usability Changes
-
-The major change is to fix the history of sub-items. This allows for the tree not to be broken by going
-to a commit that only exists in either a sub-module or sub-git tree. This is a departure from the
-previous way of working.
 
 Issues
 ------
-
-- There is a minor problem with GitLog getting confused when diff's on different files are done one after
-another. I would simply suggest pulling down GitLog and then either opening another file, or toggle the
-git log windows. C-d will pull down existing diffs in the code/tree window.
 
 - submodule branches. Yup, not really supported. (not going to be either).
 

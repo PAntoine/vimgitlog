@@ -22,7 +22,7 @@ syn region	glBranchLine		start="^  [a-zA-Z]" start="^[>\*] [a-zA-Z]" end="$"		co
 syn match	glCurrentBranchName	"^\* [0-9A-Za-z\/\._\-#]\+\s\+"hs=s+2	contained containedin=glBranchLine nextgroup=glBranchHash
 syn match	glSelectBranchName	"^> [0-9A-Za-z\/\._\-#]\+\s\+"hs=s+2	contained containedin=glBranchLine nextgroup=glBranchHash
 syn match	glNormalBranchName	"^  [0-9A-Za-z\/\._\-#]\+\s\+"hs=s+2	contained containedin=glBranchLine nextgroup=glBranchHash
-syn match	glBranchHash		"\x\x\x\x\x\x\x"						contained contains=@NoSpell containedin=glBranchLine nextgroup=glBranchMessage
+syn match	glBranchHash		"\x\+"						contained contains=@NoSpell containedin=glBranchLine nextgroup=glBranchMessage
 
 hi link glBranchHash		Character
 hi link glCurrentBranchName	Identifier
@@ -31,11 +31,11 @@ hi link glNormalBranchName	Comment
 hi link glBranchLine		String
 
 " highlighting for for the search window
-syn region	glSearch			start="^\x\x\x\x\x\x\x:" end="$"		keepend contains=glSearchHash,glSearchFileName,glSearchLineNumber,glSearchMessage,@NoSpell
-syn match	glSearchHash		"\x\x\x\x\x\x\x"						contained nextgroup=glSearchFileName contains=@NoSpell containedin=glSearch
-syn match	glSearchFileName	":[0-9A-Za-z\/\._\-]\+"hs=s+1			contained nextgroup=glSearchLineNumber contains=@NoSpell containedin=glSearch
-syn match	glSearchLineNumber	":[0-9]\+"hs=s+1						contained nextgroup=glSearchMessage containedin=glSearch
-syn match	glSearchMessage		":.\+$"hs=s+1							contained containedin=glSearch
+syn region	glSearch			start="^\x\+:" end="$"			keepend contains=glSearchHash,@NoSpell
+syn match	glSearchHash		"\x\+"							contained nextgroup=glSearchFileName contains=@NoSpell containedin=glSearch
+syn match	glSearchFileName	":[0-9A-Za-z\/\._\-]\+"hs=s+1	contained nextgroup=glSearchLineNumber contains=@NoSpell containedin=glSearch
+syn match	glSearchLineNumber	":[0-9]\+"hs=s+1				contained nextgroup=glSearchMessage containedin=glSearch
+syn match	glSearchMessage		":.\+$"hs=s+1					contained containedin=glSearch
 
 " highlights
 hi link glSearchHash			Character
@@ -44,9 +44,10 @@ hi link glSearchLineNumber		LineNr
 hi link glSearchMessage			Comment
 
 "highlight the log window
-syn region	glLog				start="^[| ]*\*[| ]* \x\x\x\x\x\x\x\s\+[0-9A-Za-z\/\._\-#@]" end="$"	contains=glLogHash,glCruft,glLogMessage,@NoSpell keepend
-syn match	glBranchMessage		"\s[0-9A-Za-z\/\._\-#@\[\]()'":\*~]\+"			contained containedin=glLog,glBranchLine
-syn match	glLogHash			" \x\x\x\x\x\x\x"							contained containedin=glLog nextgroup=glBranchMessage
+syn region	glLog				start="^[| ]*\*[| ]* \x\+\s\+.\+" end="$"	contains=glGraph,@NoSpell keepend
+syn match	glGraph				"^[| ]*\*[| ]*\s"							contained containedin=glLog nextgroup=glLogHash
+syn match	glLogHash			"\x\+\s"									contained nextgroup=glBranchMessage
+syn match	glBranchMessage		".\+$"										contained
 
 syn region	glBranchHeader		start="^branch:" start="^file:" end="$"		keepend contains=glBranch,glFile,glBranchName
 syn keyword	glBranch			contained branch
@@ -67,7 +68,7 @@ syn keyword	glHCommit		contained commit
 
 hi link glHCommit			Identifier
 
-syn region	glDirLine		start="^\s*[▸▾>v] " end="$"		keepend contains=glMarker,glDirName,@NoSpell
+syn region	glDirLine		start="^\s*[▸▾>v] " end="$"		keepend contains=glMarker,@NoSpell
 syn match	glMarker		"▸ "							contained containedin=glDirLine nextgroup=glDirName
 syn match	glMarker		"▾ "							contained containedin=glDirLine nextgroup=glDirName
 syn match	glMarker		"> "							contained containedin=glDirLine nextgroup=glDirName
@@ -101,3 +102,4 @@ hi link	glStateSubGit		Comment
 hi link	glStateSubRepo		Comment
 hi link	glStateSame			String
 
+" vim: ts=4 tw=4 fdm=marker :
