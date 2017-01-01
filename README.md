@@ -1,7 +1,7 @@
 vimgitlog
 =========
 
-Version: 5.1.0
+Version: 5.1.1
 
 Git Tree, Log and Diff plugin for vim. 
 
@@ -19,9 +19,11 @@ added to make using that set of git repositories usable from within Vim.
 In the log window \_\_gitlog\_\_ the following commands work:
 
     o            opens the file. This will simply open the file in a new window.
+	p            views the patch for the commit.
     s            starts a search and opens the search window.
     t            open the tree view at the current commit (only works in the main repository tree).
 	T            Go back to the tree view.
+    r            revert: Open the selected file version as the currently file.
     d            This will open the file and diff it against the window that was active when it was lauched.
     <cr>         This will open the file and diff it against the window that was active when it was lauched.
     <c-d>        Close all the open diff's.
@@ -29,28 +31,34 @@ In the log window \_\_gitlog\_\_ the following commands work:
 
 In the tree window \_\_gitlog\_\_ the following commands work:
 
-    l    		opens the local version of the file, if it exists.",
-    d    		diff's the tree view of the file against the local version.",
-    r    		refreshes the tree element that it is on.",
-    R    		refreshes the root directory.",
-    h    		show the history of the current file.",
-    p    		show the previous version of the file.",
-    a    		open the current item and all it's children.",
-    A    		open the whole tree (toggles).",
-    x    		close the current tree or the parent of the current tree.",
-    X    		close the whole tree.",
-    C    		toggle 'only changes only' and rebuild the tree.",
-    T    		go back to the log view.",
-    b    		Toggle branch window.",
-    s    		Toggle Secret (hidden) files.",
-    <cr>    	opens the local version of the file, if it exists.",
-    <c-d>    	pull down all the diff windows.",
-    <c-h>    	reset the current commit to HEAD and current working branch.",
-    <c-l>    	reset the current commit to latest on current branch.",
-    ]c    	    goto next changed item.",
-    [c    	    goto previous changed item.",
-    ]a    	    goto next changed/added/deleted item."
-    [a    	    goto previous changed/added/deleted item."
+    l    		opens the local version of the file, if it exists.
+    d    		diff's the tree view of the file against the local version.
+    r    		refreshes the tree element that it is on.
+    R    		refreshes the root directory.
+    h    		show the history of the current file.
+    p    		show the previous version of the file.
+    a    		open the current item and all it's children.
+    A    		open the whole tree (toggles).
+    x    		close the current tree or the parent of the current tree.
+    X    		close the whole tree.
+    C    		toggle 'only changes only' and rebuild the tree.
+    T    		go back to the log view.
+    b    		Toggle branch window.
+    s    		Toggle Secret (hidden) files.
+    <cr>    	opens the local version of the file, if it exists.
+    <c-d>    	pull down all the diff windows.
+    <c-h>    	reset the current commit to HEAD and current working branch.
+    <c-l>    	reset the current commit to latest on current branch.
+    ]c    	    goto next changed item.
+    [c    	    goto previous changed item.
+    ]a    	    goto next changed/added/deleted item.
+    [a    	    goto previous changed/added/deleted item.
+    fa          Add the current file to 'git', this does not commit.
+    fd          Delete the current file. Does not effect git.
+    fD          Delete the file from the file-system and git.
+    fm          Move the file on the file system.
+    fM          Move the file on the file system and git.
+    fr          Revert the current working file to the current selected commit.
 
 
 In the search window \_\_gitsearch\_\_ the two following commands work:
@@ -84,7 +92,7 @@ And the should be it.
 Configuration
 -------------
 
-The defult configuration is one that supports backward compatibility, this is really to not mess up the
+The default configuration is one that supports backward compatibility, this is really to not mess up the
 workflow of people that currently use GITLOG. But, to make the new features usable I suggest that the
 following configurations are used. Obviously your workflow use whatever configurations you want.
 
@@ -142,29 +150,19 @@ these are suffixes that I have chosen.
 Major Changes
 -------------
 
-## Tree Searching ##
-
-The ability to find changes in the tree especially big trees really helps speed up development. So this feature has
-been added. This works similar to the way that the diff goto next change works, obviously that is deliberate. The
-searches will continue from the last result. It starts and end at the tree level that the search started at, this
-so in big trees the search does not take forever. There are two search commands, types 'c' for changes and 'a' for
-any. Any will find any change in the tree and 'c' will only find the changes.
-
-The search only resets on it not finding anything. It does not loop.
-
-## Toggling Hidden files and Branch Window ##
-
-The ability to toggle the list of hidden files and the branch window has been added. The hidden files you can work
-out why this would be useful. The branch window mostly as it is useless when in repo mode as it does not have a branch.
-This is not actually true, but branching in repo is not clean and the current root branch may not be the branch you
-want and the repos tend to be detached heads. I think the repo may have a manifest that will allow for the branch
-window to be more useful. But that can wait.
-
 ## Bug Fixes and Tidy ups ##
 
-Lots a silly bugs to do with where we are in the repository when the gvim instance was started. Basically was not
-taking that into account when doing most things. These should all be fixed now. Fixed the syntax tree as
+This is mostly fixes for backwards compatibility. Have run this on git < 2 and on vim < 7.4, things had gotten
+broken due to not doing backwards testing and not having to use older releases.
 
+## Added File Commands ##
+
+Simply as I user this as my main directory viewer it was getting annoying not to be able to do simple stuff
+from the menu.
+
+## View Commit Patch ##
+
+Basically that's it. Working on another big code base and this is becoming an issue.
 
 Issues
 ------
@@ -176,6 +174,6 @@ Issues
 
 Licence and Copyright
 ---------------------
-                    Copyright (c) 2012-2015 Peter Antoine
+                    Copyright (c) 2012-2017 Peter Antoine
                              All rights Reserved.
                      Released Under the Artistic Licence

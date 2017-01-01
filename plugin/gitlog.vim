@@ -33,13 +33,29 @@ else
 		" will work. But it arrived in 1.8.5 so we will fall back to the bad ways
 		" in older gits. Some features wont work as expected but no regressions.
 		let s:use_big_c = 1
+	else
+		let s:use_big_c = 0
 	endif
 	unlet version_list
 endif
 unlet version_str
 
+if v:version < 704
+	" The expand function changed in 704. It now takes more parameters. So lets
+	" define a function the handles the expand with parameters and returns a
+	" list.
+	function s:expand_list(path)
+		return split(expand(a:path, 1), '\n')
+	endfunction
+else
+	function s:expand_list(path)
+		return expand(a:path, 1, 1)
+	endfunction
+endif
+
+
 " Version of the plugin
-let g:GITLOG_version = "5.1.0 alpha"
+let g:GITLOG_version = "5.1.1"
 
 " set up variables
 let s:help = 0
@@ -59,6 +75,24 @@ let s:git_history = []
 let s:history_title = ''
 let s:gitlog_window_names = ['__gitlog__', '__gitbranch__', '__gitsearch__']
 let s:search_object = {}
+
+if !(exists("g:GITLOG_path_separator"))
+	if has('unix')
+		let g:GITLOG_path_separator = '/'
+
+	elseif has('win32')
+		let g:GITLOG_path_separator = '\\'
+
+	else
+		echohl ErrorMsg
+		echomsg "Platform not supported. Set g:GITLOG_path_separator for your platform."
+		echohl Normal
+
+		" We are going to default to unix and hopefully that will work for the
+		" platform - works for most.
+		let g:GITLOG_path_separator = '/'
+	endif
+endif
 
 if !(exists("g:GITLOG_default_mode"))
 	let g:GITLOG_default_mode = 1
@@ -161,6 +195,7 @@ let s:log_help = [	 "Log Window Keys (? to remove) ",
 					\"s     starts a search and opens the search window.",
 					\"t     open the tree view at the current commit.",
 					\"d     This will open the file and diff it against the window that was active when it was launched.",
+					\"r     revert: Open the selected file version as the currently file.",
 					\"T		go back to the tree view.",
 					\"<cr>  This will open the file and diff it against the window that was active when it was launched.",
 					\"<c-d> Close all the open diff's.",
@@ -190,6 +225,12 @@ let s:tree_help = [	 "Tree Window Keys (? to remove) ",
 					\"[c		goto previous changed item.",
 					\"]a		goto next changed/added/deleted item.",
 					\"[a		goto previous changed/added/deleted item.",
+					\"fa		Add the current file to 'git', this does not commit.",
+					\"fd		Delete the current file. Does not effect git.",
+					\"fD		Delete the file from the file-system and git.",
+					\"fm		Move the file on the file system.",
+					\"fM		Move the file on the file system and git.",
+					\"fr		Revert the current working file to the current selected commit.",
 					\""]
 
 "
@@ -247,10 +288,32 @@ function! GITLOG_OpenSearchRevision(open_mode)
 			call s:GITLOG_OpenDiffWindow(commit, revision_path, s:history_item)
 
 		elseif a:open_mode == 1
-			call s:GITLOG_OpenCodeWindow(commit,revision_path, s:history_item)
+			call s:GITLOG_OpenCodeWindow(commit,revision_path, s:history_item, 1)
 			call setpos(".",[0,revision_line,1,-1])
 		endif
 
+	endif
+endfunction																		"}}}
+" FUNCITON:	GITLOG_ShowPatch()													{{{
+"
+" This function will show a path for the revision for viewing.
+" It will create a new window and load the patch into that window.
+"
+" vars:
+"	none
+"
+" returns:
+"	nothing
+"
+function! GITLOG_ShowPatch()
+	let commit = s:GITLOG_GetCommitHash(line('.'))
+
+	if (commit == "")
+		echohl Normal
+		echomsg "Cannot find specific commit."
+		echohl WarningMsg
+	else
+		call s:GITLOG_OpenPatchWindow(commit)
 	endif
 endfunction																		"}}}
 " FUNCITON:	GITLOG_OpenRevision()												{{{
@@ -264,7 +327,7 @@ endfunction																		"}}}
 " returns:
 "	nothing
 "
-function! GITLOG_OpenRevision()
+function! GITLOG_OpenRevision(as_history)
 	let commit = s:GITLOG_GetCommitHash(line('.'))
 
 	if (commit != "")
@@ -276,7 +339,7 @@ function! GITLOG_OpenRevision()
 			echomsg "The repository does not have this file"
 			echohl WarningMsg
 		else
-			call s:GITLOG_OpenCodeWindow(commit, s:history_file, s:history_item)
+			call s:GITLOG_OpenCodeWindow(commit, s:history_file, s:history_item, a:as_history)
 		endif
 	endif
 endfunction																		"}}}
@@ -390,8 +453,6 @@ endfunction																		"}}}
 "
 function!	GITLOG_ToggleWindows(...)
 	if !exists("s:gitlog_loaded") || (a:0 == 1 && a:1 != s:gitlog_loaded)
-		augroup GITLOG
-
 		let s:repository_root = fnamemodify(s:GITLOG_FindRespositoryRoot(s:revision_file), ':p')
 
 		if len(s:root_list) == 1
@@ -433,8 +494,13 @@ function!	GITLOG_ToggleWindows(...)
 	else
 		unlet s:gitlog_loaded
 		call GITLOG_CloseWindows()
-		au! GITLOG
-		augroup! GITLOG
+
+		" au only used in the log window so might not exist.
+		try
+			au! GITLOG
+			augroup! GITLOG
+		catch
+		endtry
 	endif
 endfunction																		"}}}
 " FUNCTION: GITLOG_SwitchLocalBranch()											{{{
@@ -465,6 +531,35 @@ function! GITLOG_SwitchLocalBranch()
 	endif
 endfunction																		"}}}
 " INTERNAL FUNCTIONS BELOW --- Do not call directly
+" FUNCITON: GITLOG_IsDirectory												{{{
+"
+" If the item is a directory. As directories have many types it makes sence
+" to have a single function to check for these. If the 'is_real' flag is set
+" then it will check to see if the directory is currently on the file system.
+"
+" vars:
+"	item		The item that is being tested.
+"	is_real		If the directory is currently in the file system.
+"
+" returns:
+"	true of the item is a window, else false.
+"
+function! s:GITLOG_IsDirectory(item, is_real)
+	let result = 0
+
+	" It has to be one of these types to be a directory. Note we don't track links as files
+	" not really what we do here.
+	if a:item.type == 'tree' || a:item.type == 'commit' || a:item.type == 'link' || a:item.type == 'git'
+		if a:is_real == 0
+			let result = 1
+		else
+			let path = s:GITLOG_GetFilePath(found_item)
+			let result = isdirectory(path)
+		endif
+	endif
+
+	return result
+endfunction																		"}}}
 " FUNCITON: GITLOG_FindUsefulWindow												{{{
 "
 " Ok, we need a useful window to be able open our new file/output in. I can't
@@ -551,7 +646,7 @@ endfunction																		"}}}
 " returns:
 "	The result of the git command or and empty string.
 "
-function! s:GITLOG_OpenWindowWithContents(buffname, contents)
+function! s:GITLOG_OpenWindowWithContents(buffname, contents, readonly, force_update)
 
 	if winnr("$") == 1
 		" only the log window open, so create a new window
@@ -560,6 +655,18 @@ function! s:GITLOG_OpenWindowWithContents(buffname, contents)
 	elseif bufwinnr(bufnr(a:buffname)) != -1
 		" Ok, it's currently in a window
 		exe bufwinnr(bufnr(a:buffname)) . "wincmd w"
+
+		if a:force_update
+			" now write the captured text to the a new buffer - after removing
+			" the \x00's from the text and splitting into an array.
+			setlocal modifiable
+			silent exe "% delete"
+			call setline(1,a:contents)
+
+			if a:readonly == 1
+				setlocal nomodifiable
+			endif
+		endif
 	else
 		let select_window = s:GITLOG_FindUsefulWindow()
 
@@ -584,7 +691,12 @@ function! s:GITLOG_OpenWindowWithContents(buffname, contents)
 		setlocal modifiable
 		call setline(1,a:contents)
 		exe "setlocal filetype=" . file_type
-		setlocal buftype=nofile bufhidden=wipe nobuflisted nomodifiable noswapfile nowrap
+
+		if a:readonly == 1
+			setlocal buftype=nofile bufhidden=wipe nobuflisted nomodifiable noswapfile nowrap
+		else
+			setlocal nomodified
+		endif
 	endif
 endfunction																		"}}}
 " FUNCITON: GITLOG_OpenWindowWithFile											{{{
@@ -642,7 +754,7 @@ function! s:GITLOG_ExecuteGitCommand(root_id, git_command)
 	if s:use_big_c
 		let run_command = "git --git-dir=" . s:root_list[a:root_id].git_dir . " -C " . s:root_list[a:root_id].root_dir . " --no-pager " . a:git_command
 	else
-		let run_command = "git --git-dir=" . s:root_list[a:root_id].git_dir . " --work-dir=" . s:root_list[a:root_id].root_dir . " --no-pager " . a:git_command
+		let run_command = "git --git-dir=" . s:root_list[a:root_id].git_dir . " --work-tree=" . s:root_list[a:root_id].root_dir . " --no-pager " . a:git_command
 	endif
 
 	let result = system(run_command)
@@ -753,15 +865,18 @@ function! s:GITLOG_MapLogBufferKeys()
 	map <buffer> <silent> <cr>	:call GITLOG_DiffRevision()<cr>
 	map <buffer> <silent> d		:call GITLOG_DiffRevision()<cr>
 	map <buffer> <silent> s		:call GITLOG_SearchCommits()<cr>
-	map <buffer> <silent> o		:call GITLOG_OpenRevision()<cr>
+	map <buffer> <silent> o		:call GITLOG_OpenRevision(1)<cr>
+	map <buffer> <silent> p		:call GITLOG_ShowPatch()<cr>
 	map <buffer> <silent> t		:call GITLOG_OpenRevisionTree()<cr>
 	map <buffer> <silent> T		:call GITLOG_FlipWindows()<cr>
+	map <buffer> <silent> r		:call GITLOG_ActionFileRevert()<cr>
 	map <buffer> <silent> ?		:call GITLOG_ToggleHelp()<cr>
 	map <buffer> <silent> <c-d>	:call GITLOG_CloseDiffBuffers()<cr>
 	map <buffer> <silent> <c-h>	:call GITLOG_ResetCommit()<cr>
-	map <buffer> <silent> <c-l>	:call GITLOG_LastestCommit()<cr>
 
-	au GITLOG BufLeave <buffer> call s:GITLOG_LeaveBuffer()
+	augroup GITLOG
+		au GITLOG BufLeave <buffer> call s:GITLOG_LeaveBuffer()
+	augroup END
 endfunction																	"}}}
 " FUNCTION: GITLOG_GetSubModuleDir()										{{{
 "
@@ -1083,12 +1198,18 @@ function! s:GITLOG_OpenTreeWindow()
 	map <buffer> <silent> s		:call GITLOG_ActionToggleHidden()<cr>
 	map <buffer> <silent> <c-d>	:call GITLOG_CloseDiffBuffers()<cr>
 	map <buffer> <silent> <c-h>	:call GITLOG_ResetCommit()<cr>
-	map <buffer> <silent> <c-l>	:call GITLOG_LastestCommit()<cr>
 	map <buffer> <silent> ?		:call GITLOG_ToggleHelp()<cr>
 	map <buffer> <silent> ]a	:call GITLOG_ActionGotoChange(1, g:GITLOG_WALK_FORWARDS)<cr>
 	map <buffer> <silent> [a	:call GITLOG_ActionGotoChange(1, g:GITLOG_WALK_BACKWARDS)<cr>
 	map <buffer> <silent> ]c	:call GITLOG_ActionGotoChange(0, g:GITLOG_WALK_FORWARDS)<cr>
 	map <buffer> <silent> [c	:call GITLOG_ActionGotoChange(0, g:GITLOG_WALK_BACKWARDS)<cr>
+	map <buffer> <silent> fc	:call GITLOG_ActionFileCreate()<cr>
+	map <buffer> <silent> fa	:call GITLOG_ActionFileAdd()<cr>
+	map <buffer> <silent> fd	:call GITLOG_ActionFileDelete(0)<cr>
+	map <buffer> <silent> fD	:call GITLOG_ActionFileDelete(1)<cr>
+	map <buffer> <silent> fm	:call GITLOG_ActionFileMove(0)<cr>
+	map <buffer> <silent> fM	:call GITLOG_ActionFileMove(1)<cr>
+	map <buffer> <silent> fr	:call GITLOG_ActionFileRevert()<cr>
 
 	" now update the window
 	if !has_key(found_item, "lnum")
@@ -1339,31 +1460,6 @@ function! s:GITLOG_OpenBranchWindow()
 		silent exe bufwinnr(bufnr("__gitlog__")) . "wincmd w"
 	endif
 endfunction																"}}}
-" FUNCTION:	GITLOG_LoadRevisionFile(revision)							{{{
-"
-" This function will open the specified revision in the current window. It
-" will get the revision from Git and then load it into the current window.
-"
-" vars:
-"   git_dir		the git directory
-"	commit		the commit number to diff against
-"	file_name	the file path to diff.
-"
-" returns:
-"	nothing
-"
-function! s:GITLOG_LoadRevisionFile(git_dir,commit,file_name)
-	let gitlog_file = s:GITLOG_ExecuteGitCommand(1, "show " . s:GITLOG_MakeRevision(a:commit,a:file_name))
-
-	" now write the captured text to the a new buffer - after removing
-	" the \x00's from the text and splitting into an array.
-	let git_array = split(gitlog_file,'[\x00]')
-	call setline(1,git_array)
-	setlocal buftype=nofile bufhidden=wipe nobuflisted nomodifiable noswapfile nowrap
-
-	" we can't (don't want to) change the historical commit
-	setlocal nomodifiable
-endfunction																"}}}
 " FUNCTION: GITLOG_LocateRespositoryRoot(filename)								{{{
 "
 " This function will search the tree UPWARDS and downwards to find the git
@@ -1517,10 +1613,14 @@ endfunction																"}}}
 " returns:
 "	nothing
 "
-function! s:GITLOG_OpenCodeWindow(commit,file_path,found_item)
-	let buffname = a:commit . ":" . fnamemodify(a:file_path,":t")
+function! s:GITLOG_OpenCodeWindow(commit,file_path,found_item,history)
+	if a:history
+		let buffname = a:commit . ":" . fnamemodify(a:file_path,":t")
+	else
+		let buffname = a:file_path
+	endif
 
-	if bufwinnr(bufnr(buffname)) != -1
+	if bufwinnr(bufnr(buffname)) != -1 && a:history == 1
 		" window already open - just go to it
 		exe bufwinnr(bufnr(buffname)) . "wincmd w"
 	else
@@ -1533,7 +1633,30 @@ function! s:GITLOG_OpenCodeWindow(commit,file_path,found_item)
 		endif
 
 		call GITLOG_CloseDiffBuffers()
-		call s:GITLOG_OpenWindowWithContents(buffname, split(gitlog_file,'[\x00]'))
+		call s:GITLOG_OpenWindowWithContents(buffname, split(gitlog_file,'[\x00]'), a:history, 1)
+	endif
+endfunction																	"}}}
+" FUNCTION:	GITLOG_OpenPatchWindow(revision)								{{{
+"
+" This function will open the specified revision.
+"
+" vars:
+"	revision	The XXXXXXX:<name> formatted revision to open.
+"
+" returns:
+"	nothing
+"
+function! s:GITLOG_OpenPatchWindow(commit)
+	let buffname = a:commit . ".patch"
+
+	if bufwinnr(bufnr(buffname)) != -1
+		" window already open - just go to it
+		exe bufwinnr(bufnr(buffname)) . "wincmd w"
+	else
+		let gitlog_file = s:GITLOG_ExecuteGitCommand(s:history_root, "show " . a:commit)
+
+		call GITLOG_CloseDiffBuffers()
+		call s:GITLOG_OpenWindowWithContents(buffname, split(gitlog_file,'[\x00]'), 0, 0)
 	endif
 endfunction																	"}}}
 " FUNCTION: GITLOG_MapSearchBufferKeys()									{{{
@@ -1649,7 +1772,7 @@ function! GITLOG_GetBranch(...)
 
 			let bname = branch[2:]
 
-			" if on a detached head then use he commit hash as the branch number
+			" if on a detached head then use the commit hash as the branch number
 			if bname == "(no branch)"
 				let bname = s:GITLOG_ExecuteGitCommand(1, 'rev-list --branches -1 --abbrev-commit ' . s:gitlog_current_commit)
 			endif
@@ -1746,15 +1869,15 @@ endfunction																	"}}}
 "
 function! s:GITLOG_MakeDirectoryQuick(path_name, parent_item, recursive)
 	" Get the dot files and remove '.' and '..'
-	let dot_files = expand(a:path_name . '.*',1,1)[2:]
-
-	let local_files = expand(a:path_name . '*',1,1)
+	let dot_files = s:expand_list(a:path_name . '.*')[2:]
+	let local_files = s:expand_list(a:path_name . '*')
 
 	if len(local_files) == 1 && (local_files[0] == '\\\\\\\*' || local_files[0] == a:path_name . '*')
 		let local_files = []
 	endif
 
-	let current_dir =  dot_files + local_files
+
+	let current_dir = dot_files + local_files
 
 	let new_directory = []
 
@@ -1786,55 +1909,6 @@ function! s:GITLOG_MakeDirectoryQuick(path_name, parent_item, recursive)
 	let result = len(s:directory_list) - 1
 
 	return result
-endfunction																	"}}}
-" FUNCTION: GITLOG_AddSubmoduleItem()										{{{
-"
-" This function will add the submodule item to the current directory tree. It
-" will mark a tree item as a sub-module if it finds one else it will add a
-" new tree item and mark it as a sub-module.
-"
-" vars:
-"   none
-"
-" returns:
-"	nothing
-"
-function! s:GITLOG_AddSubmoduleItem(path_items, dir_item, submodule_path)
-	let item_idx = 0
-
-	while item_idx  < len(s:directory_list[a:dir_item.child])
-		let item = s:directory_list[a:dir_item.child][item_idx]
-
-		if item.name >=# a:path_items[0]
-			" Ok, found the item.
-			if item.name ==# a:path_items[0] && item.type == 'tree'
-				" Ok, it is found and the correct type - make it a submodule
-				if len(a:path_items) == 1
-					let item.type = 'commit'
-					let item.root_id = s:GITLOG_GetSubModuleDetails(a:submodule_path . '/')
-				else
-					call s:GITLOG_AddSubmoduleItem(a:path_items[1:], item, a:submodule_path)
-				endif
-			else
-				" Need to insert a new-item.
-				let new_item = {	'name'		: a:path_items[0],
-								\	'status'	: 'closed',
-								\   'marker'	: s:GITLOG_Added,
-								\	'type'		: 'commit',
-								\	'root_id'	: a:dir_item.root_id,
-								\	'child'		: 0,
-								\	'parent'	: a:dir_item}
-
-				let item.root_id = s:GITLOG_GetSubModuleDetails(a:submodule_path . '/')
-				call insert(s:directory_list[a:dir_tree.child], new_item, item_idx)
-			endif
-
-			break
-		endif
-
-		let item_idx = item_idx + 1
-	endwhile
-
 endfunction																	"}}}
 " FUNCTION: GITLOG_FindTreeElement()										{{{
 "
@@ -1966,6 +2040,8 @@ endfunction																	"}}}
 "	nothing
 "
 function! s:GITLOG_HandleSame(directory_status, path_offset, item_name, dir_item)
+	let result = 0
+
 	" Ok, same file exists in both
 	if len(a:directory_status) > 0
 		if a:dir_item.type != 'blob'
@@ -1975,14 +2051,18 @@ function! s:GITLOG_HandleSame(directory_status, path_offset, item_name, dir_item
 			for status_item in a:directory_status
 				if name[:-2] == status_item || status_item[:len(name)-1] == name
 					let a:dir_item.marker = s:GITLOG_Changed
+					let result = 1
 					break
 				endif
 			endfor
 		elseif index(a:directory_status, a:path_offset . a:item_name) != -1
 			" For items let vim take the strain
 			let a:dir_item.marker = s:GITLOG_Changed
+			let result = 1
 		endif
 	endif
+
+	return result
 endfunction																	"}}}
 " FUNCTION: GITLOG_GitUpdateDirectory()										{{{
 "
@@ -1999,7 +2079,8 @@ function! s:GITLOG_GitUpdateDirectory(path, dir_item)
 	let file_list = []
 	let lookup = []
 
-	if s:is_repo == 0 || a:dir_item.root_id != 1
+	if s:is_repo == 0
+		let changed = 0
 		let path_offset = substitute( s:GITLOG_GetFilePath(a:dir_item) . '/', s:root_list[a:dir_item.root_id].root_dir, '', '')
 
 		" Ok, we need to get what files git thinks is in the current directory
@@ -2012,25 +2093,26 @@ function! s:GITLOG_GitUpdateDirectory(path, dir_item)
 		let git_files = []
 		let git_types = []
 		for item in status
-			call add(git_files, item[strridx(item, "\t")+1 :])
-			call add(git_types, item[7:11])
+			let items = split(item)
+			call add(git_files, items[4])
+			call add(git_types, items[1])
 		endfor
 
 		" Ok, let essentially do an insertion sort to handle the missing items.
 		let git_id = 0
 		let fs_id = 0
-	
+
 		let paths = join(map(copy(git_files), 'path_offset . v:val'))
 		if s:gitlog_current_commit == 'HEAD' || s:gitlog_current_commit != s:gitlog_current_branch
 			let directory_status = split(s:GITLOG_ExecuteGitCommand(a:dir_item.root_id, "diff-index --name-only --diff-filter=M " . s:gitlog_current_commit . " -- " . paths),'\n')
 		else
-			" avoid the "is it a tag or branch message"
+			" avoid the 'is it a tag or branch message'
 			let directory_status = split(s:GITLOG_ExecuteGitCommand(a:dir_item.root_id, "diff-index --name-only --diff-filter=M refs/heads/" . s:gitlog_current_branch . " -- " . paths),'\n')
 		endif
 
 		while git_id < len(git_files) && fs_id < len(s:directory_list[a:dir_item.child])
 			if git_files[git_id] ==# s:directory_list[a:dir_item.child][fs_id].name
-				call s:GITLOG_HandleSame(directory_status, path_offset, git_files[git_id], s:directory_list[a:dir_item.child][fs_id])
+				let changed = changed || s:GITLOG_HandleSame(directory_status, path_offset, git_files[git_id], s:directory_list[a:dir_item.child][fs_id])
 
 				let git_id = git_id + 1
 				let fs_id = fs_id + 1
@@ -2042,10 +2124,12 @@ function! s:GITLOG_GitUpdateDirectory(path, dir_item)
 					" The two trees are subtly in different sort orders, git has a length
 					" factored in, so look in the other list to see if it exists. This should
 					" be quicker that always sorting the list into the same sort order.
-					call s:GITLOG_HandleSame(directory_status, path_offset, git_files[item_idx], s:directory_list[a:dir_item.child][fs_id])
+					let changed = changed || s:GITLOG_HandleSame(directory_status, path_offset, git_files[item_idx], s:directory_list[a:dir_item.child][fs_id])
 					call remove(git_files, item_idx)
 					let fs_id = fs_id + 1
 				else
+					" TODO: fix this -- this works but makes no sense. It marks something
+					" that exists as new, but does not show up no the list as new???
 					let s:directory_list[a:dir_item.child][fs_id].marker = s:GITLOG_Added
 					let fs_id = fs_id + 1
 				endif
@@ -2061,10 +2145,15 @@ function! s:GITLOG_GitUpdateDirectory(path, dir_item)
 
 				call insert(s:directory_list[a:dir_item.child], new_item, fs_id)
 
+				let changed = 1
 				let fs_id = fs_id + 1
 				let git_id = git_id + 1
 			endif
 		endwhile
+
+		if (git_id < len(git_files) || fs_id < len(s:directory_list[a:dir_item.child]))
+			let changed = 1
+		endif
 
 		while git_id < len(git_files)
 			let new_item = {	'name'		: git_files[git_id],
@@ -2077,6 +2166,7 @@ function! s:GITLOG_GitUpdateDirectory(path, dir_item)
 
 			call insert(s:directory_list[a:dir_item.child], new_item)
 
+			let fs_id = fs_id + 1
 			let git_id = git_id + 1
 		endwhile
 
@@ -2084,6 +2174,18 @@ function! s:GITLOG_GitUpdateDirectory(path, dir_item)
 			let s:directory_list[a:dir_item.child][fs_id].marker = s:GITLOG_Added
 			let fs_id = fs_id + 1
 		endwhile
+
+
+		" change all the parents of this child so that they know they have changed children
+		if changed && a:dir_item.marker == s:GITLOG_Same
+			let current_item = a:dir_item
+
+			while current_item.marker == s:GITLOG_Same && current_item.type != 'root'
+				let current_item.marker = s:GITLOG_Changed
+				let current_item = current_item.parent
+			endwhile
+		endif
+
 	endif
 endfunction																	"}}}
 " FUNCTION: GITLOG_GetGitChangeTree()										{{{
@@ -2135,6 +2237,7 @@ function! s:GITLOG_MapGitChanges(git_change_tree, parent_item)
 		let item_id = 0
 
 		while item_id < len(s:directory_list[a:parent_item.child])
+			let been_a_change = 1
 			let entry = s:directory_list[a:parent_item.child][item_id]
 			if entry.name ==# item
 				" If it is the leaf, carry on the search
@@ -2148,7 +2251,7 @@ function! s:GITLOG_MapGitChanges(git_change_tree, parent_item)
 				else
 					let entry.marker = a:git_change_tree.items[item].status
 				endif
-	
+
 				let entry.root_id = a:git_change_tree.items[item].root_id
 				let found = 1
 				break
@@ -2166,10 +2269,6 @@ function! s:GITLOG_MapGitChanges(git_change_tree, parent_item)
 									\	'parent'	: a:parent_item}
 
 					call insert(s:directory_list[a:parent_item.child], new_item, item_id)
-
-					if index(g:GITLOG_ignore_suffixes, fnamemodify(item,':e')) != -1
-						echomsg "Found:" . a:git_change_tree.items[item].status
-					endif
 
 					if a:git_change_tree.items[item].type == 'D'
 						call add(s:directory_list, [])
@@ -2470,7 +2569,7 @@ function! s:GITLOG_WalkForward(search_object)
 					let a:search_object.current_id = item.child
 					let a:search_object.current_item = 0
 					let a:search_object.doing_dirs = 1
-					
+
 					call add(a:search_object.stack, stack_item)
 				else
 					let a:search_object.current_item = current_item + 1
@@ -2690,6 +2789,7 @@ endfunction																"}}}
 function! GITLOG_ResetCommit()
 	if s:gitlog_current_commit != "HEAD"
 		let s:current_root = 1
+		let s:gitlog_current_commit = 'HEAD'
 
 		call s:GITLOG_ChangeBranch(s:current_root, 'HEAD')
 
@@ -2748,35 +2848,46 @@ function! GITLOG_ActionRefreshCurrentNode()
 	let found_item = s:GITLOG_FindListItem(s:current_root,line("."))
 
 	if found_item != {}
-		if (found_item.type == 'tree' || found_item.type == 'commit' || found_item.type == 'link')
-			let item = found_item
-			let path = s:found_path . item.name . '/'
-		else
-			let item = found_item.parent
-			let path = s:found_path
-		endif
-
-		let old_state = item.status
-		" first remove all the items currently in the node down
-		call s:GITLOG_DeleteTreeNode(item.child)
-
-		" now re-create the item
-		let item.child = s:GITLOG_BuildFullTree(path, item, g:GITLOG_walk_full_tree, s:GITLOG_FindTreeElement(s:submodule_tree,path))
-
-		if g:GITLOG_walk_full_tree == 0
-			" Do the partial update of the directory only - for speed.
-			call s:GITLOG_GitUpdateDirectory(path, item)
+		if found_item.parent.type == 'root'
+			call GITLOG_ActionRefreshRootDirectory()
 
 		else
-			" Do the recursive item update
-			call s:GITLOG_MapGitChanges(s:GITLOG_FindTreeElement(s:GITLOG_GetGitFullChangeTree(), path), item)
+			if (found_item.type == 'tree' || found_item.type == 'commit' || found_item.type == 'link')
+				let item = found_item
+				let path = s:found_path . item.name . '/'
+			else
+				let item = found_item.parent
+
+				if (s:found_path == "")
+					let path = fnamemodify(s:GITLOG_GetFilePath(found_item), ":p:h") . "/"
+				else
+					let path = s:found_path
+				endif
+			endif
+
+			let old_state = item.status
+
+			" first remove all the items currently in the node down
+			call s:GITLOG_DeleteTreeNode(item.child)
+
+			" now re-create the item
+			let item.child = s:GITLOG_BuildFullTree(path, item, g:GITLOG_walk_full_tree, s:GITLOG_FindTreeElement(s:submodule_tree,path))
+
+			if g:GITLOG_walk_full_tree == 0
+				" Do the partial update of the directory only - for speed.
+				call s:GITLOG_GitUpdateDirectory(path, item)
+
+			else
+				" Do the recursive item update
+				call s:GITLOG_MapGitChanges(s:GITLOG_FindTreeElement(s:GITLOG_GetGitFullChangeTree(), path), item)
+			endif
+
+			" set the state for the item
+			let item.status = old_state
+
+			" Redraw the window
+			call s:GITLOG_RedrawTreeWindow(item.lnum)
 		endif
-
-		" set the state for the item
-		let item.status = old_state
-
-		" Redraw the window
-		call s:GITLOG_RedrawTreeWindow(item.lnum)
 	endif
 endfunction																	"}}}
 " FUNCTION: GITLOG_ActionOpenLocalFile()									{{{
@@ -2864,7 +2975,7 @@ function! GITLOG_ActionSelectCurrentItem()
 					else
 						let new_path = s:found_path . found_item.name . '/'
 					endif
-		
+
 					let found_item.child = s:GITLOG_BuildFullTree(s:repository_root . new_path, found_item, g:GITLOG_walk_full_tree, s:GITLOG_FindTreeElement(s:submodule_tree,new_path))
 					call s:GITLOG_GitUpdateDirectory(new_path, found_item)
 				endif
@@ -2896,7 +3007,10 @@ function! GITLOG_ActionOpenHistoryItem()
 	let found_item = s:GITLOG_FindListItem(s:current_root,line("."))
 
 	if found_item != {}
-		if found_item.type == 'blob' && found_item.marker != s:GITLOG_Added
+		" length match is a nasty hack to get around a previous bad bit of code
+		" but this code is called less often so won't slow the whole thing down on
+		" large directories.
+		if found_item.type[0:3] == 'blob' && found_item.marker != s:GITLOG_Added
 			let file_name = s:found_path . found_item.name
 
 			" Ok, open the version in the repository
@@ -3182,7 +3296,7 @@ function! GITLOG_ActionGotoChange(any, direction)
 		else
 			let next = index(s:directory_list[found_item.parent.child], found_item)
 		endif
-	
+
 		if a:any == 1
 			let looking_for = s:GITLOG_Any
 		else
@@ -3209,7 +3323,6 @@ function! GITLOG_ActionGotoChange(any, direction)
 			" Ok, we found the next item.
 			call s:GITLOG_OpenTreeToItem(found)
 			call s:GITLOG_RedrawTreeWindow(0)
-			
 			call setpos('.',[0,found.lnum,0,0])
 		else
 			" Not found end of search
@@ -3217,6 +3330,297 @@ function! GITLOG_ActionGotoChange(any, direction)
 			echomsg "End of search. No more changes."
 			echohl Normal
 			let s:search_object = {}
+		endif
+	endif
+endfunction																	"}}}
+" FUNCTION: GITLOG_ActionFileCreate()										{{{
+"
+" This function will create a file on the file system. It will generate the
+" filename from the current cursor root. It will then present the user with a
+" prompt that have to amend to complete the new file name. If the add_to_git
+" parameter is not 0, then the file will be added to git.
+"
+" If the file is created successfully it will be opened in the working window.
+"
+" vars:
+"	none.
+"
+" returns:
+"	nothing
+"
+function! GITLOG_ActionFileCreate()
+	let s:found_path = ''
+	let found_item = s:GITLOG_FindListItem(s:current_root,line("."))
+
+	if found_item != {}
+		if s:GITLOG_IsDirectory(found_item, 0)
+			let dir_item = found_item
+		else
+			let dir_item = found_item.parent
+		endif
+
+		let path = s:GITLOG_GetFilePath(dir_item)
+		let new_filename = input("File Name: ", path . g:GITLOG_path_separator)
+
+		if new_filename != path . g:GITLOG_path_separator
+			" Ok, user did not just exit
+			let new_path = fnamemodify(new_filename, ":p:h")
+
+			if (!isdirectory(new_path))
+				" Oh, noes it does not exist. We need to ask the user if
+				" we want to create the path for the new item. i.e we might
+				" be wanting to reinstate a historic file.
+				let create_path = input("Path: " . new_path . " Does not exist, create? (Y/n)", 'y')
+
+				if create_path ==? 'y'
+					call mkdir(new_path, "p")
+				endif
+			endif
+
+			if filewritable(new_path) != 2
+				echohl WarningMsg
+				echomsg "Cannot write to the directory: " . new_path . " Cannot create file."
+				echohl Normal
+
+			elseif glob(new_filename)
+				" File already exists.
+				echohl WarningMsg
+				echomsg "File " . new_filename . "already exists."
+				echohl Normal
+			else
+				" Create the new file - use open so that any file open au's are
+				" run on the file. Does mean will have to do an update to add the
+				" file to the window.
+				call s:GITLOG_OpenWindowWithFile(new_filename)
+			endif
+		endif
+	endif
+endfunction																	"}}}
+" FUNCTION: GITLOG_Action_FileAdd()											{{{
+"
+" This function will add the current file to git. If the file is marked as
+" added within the tree then it will add to vim, if it is in any other state
+" then it will return an error and let the user do it manually.
+"
+" It will not do the commit.
+"
+" vars:
+"	none.
+"
+" returns:
+"	nothing
+"
+function! GITLOG_ActionFileAdd()
+	let s:found_path = ''
+	let found_item = s:GITLOG_FindListItem(s:current_root,line("."))
+
+	if found_item != {}
+		if found_item.marker != s:GITLOG_Added
+			echohl WarningMsg
+			echomsg "Item needs to be an Added (+) item, not going to add to git."
+			echohl Normal
+		else
+			" Ok, we are on a real item in the tree.
+			if s:GITLOG_IsDirectory(found_item, 0)
+				" Ok, we are adding a whole directory - maybe even a tree
+				" better as or this can get annoying. Must also
+				let dir_name = s:GITLOG_GetFilePath(found_item)
+
+				if found_item.type == 'tree' && isdirectory(dir_name)
+					call s:GITLOG_ExecuteGitCommand(found_item.root_id, "add " . dir_name . g:GITLOG_path_separator . "*")
+				else
+					echohl WarningMsg
+					echomsg "Item needs to be a directory and needs to exist on the file-system."
+					echohl Normal
+				endif
+			else
+				"Ok, just a file.
+				let file_name = s:GITLOG_GetFilePath(found_item)
+				let path = substitute(file_name, s:root_list[found_item.root_id].root_dir, '', '')
+
+				call s:GITLOG_ExecuteGitCommand(found_item.root_id, "add " . path)
+
+				call GITLOG_ActionRefreshCurrentNode()
+			endif
+		endif
+	endif
+endfunction																	"}}}
+" FUNCTION: GITLOG_Action_FileDelete()										{{{
+"
+" This function will delete the current selected file from the file system.
+"
+" vars:
+"	none.
+"
+" returns:
+"	nothing
+"
+function! GITLOG_ActionFileDelete(remove_from_git)
+	let s:found_path = ''
+	let found_item = s:GITLOG_FindListItem(s:current_root,line("."))
+
+	if found_item != {}
+		if found_item.marker != s:GITLOG_Deleted
+			echohl WarningMsg
+			echomsg "Item must exist to be deleted. Refresh tree."
+			echohl Normal
+		else
+			" Ok, we are on a real item in the tree.
+			if s:GITLOG_IsDirectory(found_item, 0) == 0
+				let file_name = s:GITLOG_GetFilePath(found_item)
+				let delete_path = input("delete " . file_name . "? (y/N)", 'n')
+
+				if delete_path ==? 'y'
+					"Ok, just a file.
+					if (a:remove_from_git == 1)
+						let path = substitute(file_name, s:root_list[found_item.root_id].root_dir, '', '')
+						call s:GITLOG_ExecuteGitCommand(found_item.root_id, "rm " . path)
+					else
+						call delete(file_name)
+					endif
+
+					call GITLOG_ActionRefreshCurrentNode()
+				endif
+			endif
+		endif
+	endif
+endfunction																	"}}}
+" FUNCTION: GITLOG_Action_FileMove()										{{{
+"
+" This function will move a file
+" It will not do the commit.
+"
+" vars:
+"	move_in_git		If set move the file within git.
+"
+" returns:
+"	nothing
+"
+function! GITLOG_ActionFileMove(move_in_git)
+	let s:found_path = ''
+	let found_item = s:GITLOG_FindListItem(s:current_root,line("."))
+
+	if found_item != {}
+		let from_path = s:GITLOG_GetFilePath(found_item)
+
+		if a:move_in_git == 1 && found_item.marker != s:GITLOG_Same
+			" I know it does not, but doing anything else is complex and
+			" has corner cases that maybe a problem. Commit and then move.
+			echohl WarningMsg
+			echomsg "Item needs to be an git recognised file and unchanged to git move"
+			echohl Normal
+
+		elseif found_item.marker != s:GITLOG_Same && found_item.marker != s:GITLOG_Added
+			" Meh... as above - lets keep it simple.
+			echohl WarningMsg
+			echomsg "Item needs to be an non-changed file to move."
+			echohl Normal
+
+		elseif filewritable(from_path) != 1
+			" It's not a file or we can't write to it.
+			echohl WarningMsg
+			echomsg "Item needs to be an writeable file."
+			echohl Normal
+
+		else
+			let new_filename = input("File Name: ", from_path)
+
+			if new_filename != from_path
+				let new_path = fnamemodify(new_filename, ":p:h")
+
+				" User specified a new place to put it.
+				if !isdirectory(new_path)
+					" Oh, noes it does not exist. We need to ask the user if
+					" we want to create the path for the new item. i.e we might
+					" be wanting to reinstate a historic file.
+					let create_path = input("Path: " . new_path . " Does not exist, create? (Y/n)", 'y')
+
+					if create_path ==? 'y'
+						call mkdir(new_path, "p")
+					endif
+				endif
+
+				if filewritable(new_path) != 2
+					echohl WarningMsg
+					echomsg "Cannot write to the directory: " . new_path . " Cannot move file there."
+					echohl Normal
+
+				else
+					if (a:move_in_git)
+						call s:GITLOG_ExecuteGitCommand(found_item.root_id, "mv " . from_path . " " . new_filename)
+					else
+						echo "mv " . from_path . "  " . new_filename
+						call system("mv " . from_path . "  " . new_filename)
+					endif
+
+					call GITLOG_ActionRefreshCurrentNode()
+				endif
+			endif
+		endif
+	endif
+endfunction																	"}}}
+" FUNCTION: GITLOG_Action_FileRevert()										{{{
+"
+" This function will take the current commit and then apply the file as a
+" hard revert. It wont do a Git Revert, it will copy the file over the current
+" file. It will be up to user to commit the change, the new file will replace
+" the old version - as a change - in the current buffer if it is loaded, else
+" it will be loaded within a new buffer.
+"
+" If in tree-view it will do the following;
+"  1. If at HEAD and the file on the file-system has been changed from the repo version
+"     it will revert the file to the current HEAD version.
+"  2. If not at HEAD, it will revert the current file in the buffer to the
+"     version that is at the current commit.
+"  3. Do nothing.
+"
+" If in history view.
+"  1. It will load the selected commit into a buffer.
+"
+" Note: this will only load the version in to the vim buffer. It is the users
+"       job to save the file and then update git.
+"
+" vars:
+"    none.
+"
+" returns:
+"	nothing
+"
+function! GITLOG_ActionFileRevert()
+	let s:found_path = ''
+
+	if s:gitlog_loaded == 1
+		" In the history view.
+		call GITLOG_OpenRevision(0)
+
+	else
+		" In the tree view.
+		let found_item = s:GITLOG_FindListItem(s:current_root,line("."))
+
+		if found_item != {}
+			if found_item.marker == s:GITLOG_Added
+				" If you have already changed the file or created a new one then
+				" you need to fix that before you do a revert.
+				" TODO: Warning -- when adding untracked this will be an invalid check.
+				echohl WarningMsg
+				echomsg "Cannot revert and Added item."
+				echohl Normal
+			else
+				" Ok, we can not try and revert the commit
+				if s:gitlog_current_commit == "HEAD"
+					if found_item.marker != s:GITLOG_Same && found_item.marker != s:GITLOG_Added
+						" Ok, at head the file has been changed, lets load the
+						" buffer (or create a new one) with the HEAD commit
+						" version of the file.
+						let file_name = s:GITLOG_GetFilePath(found_item)
+						call s:GITLOG_OpenCodeWindow(s:gitlog_current_commit, file_name, found_item, 0)
+					endif
+				else
+					" Not at head, lets load the current version into a buffer.
+					let file_name = s:GITLOG_GetFilePath(found_item)
+					call s:GITLOG_OpenCodeWindow(s:gitlog_current_commit, file_name, found_item, 0)
+				endif
+			endif
 		endif
 	endif
 endfunction																	"}}}

@@ -9,9 +9,10 @@
                                            `---'                           ~
 
 
-Author:      Peter Antoine
-Date:     Dec 5, 2015
-Version:  5.1.0
+Author:   Peter Antoine
+Date:     Jan 1, 2017
+Version:  5.1.1
+
 HomePage: https://github.com/PAntoine/vimgitlog
 
 
@@ -29,8 +30,9 @@ For instructions on installing this file, type:
     4. Git History Searching..................: |gitlog-searching|
     5. Git History Tree.......................: |gitlog-tree|
     6. Mapping GitLog Functions...............: |gitlog-mapping|
-    7. Configuring GitLog.....................: |gitlog-config|
-    8. History................................: |gitlog-history|
+    7. File Commands..........................: |gitlog-file-commands|
+    8. Configuring GitLog.....................: |gitlog-config|
+    9. History................................: |gitlog-history|
 
 ==============================================================================
 2. Description                                   *gitlog-description*
@@ -323,7 +325,47 @@ you would attach it to a function key, so the following mapping would be useful
 This will install GITLOG on the <f7> key.
 
 ==============================================================================
-7. Configuring GitLog                               *gitlog-config*
+7. File Commands									*gitlog-file-commands*
+
+As git view is now a full tree system (and mostly as I have stopped using
+NerdTree) it makes sense to be able to do some simple file system commands.
+
+This is just to make is easier to use.
+
+The commands that change the content of the files (ore create new ones) only
+create/amend the files in the Vim buffer. It does no change the contents on
+the file system by only in the editor. This gives the user the control to
+save or not the changes.
+
+The current list of commands are:
+
+file create	'fc'	This will create a file on the file system.
+file create	'fa'	This will add the current file to git.
+file delete 'fd'	This will remove a file from the file system not the repo.
+file remove 'fD'	This will remove a file from the system and repo.
+file move   'fm'	This will move a file on the file system.
+file move   'fM'	This will move a file on the file system and in the repo.
+file revert 'fr'	This will revert the file to it's last committed state, if
+                    in the history view, then it would revert to the current
+					displayed commit.
+
+File reverts are obviously a bit more complicated, so they follow the following
+rules:
+ If in tree-view it will do the following;
+  1. If at HEAD and the file on the file-system has been changed from the repo version
+     it will revert the file to the current HEAD version.
+  2. If not at HEAD, it will revert the current file in the buffer to the
+     version that is at the current commit.
+  3. Do nothing.
+
+ If in history view.
+  1. It will load the selected commit into a buffer.
+
+Note: reverts are hard reverts. They simply re-write the buffer with the file
+from history. Reverts ae
+
+==============================================================================
+8. Configuring GitLog                               *gitlog-config*
 
 There is only one function that really required mapping and that is the
 toggle function. As this is a single operation function I would assume that
@@ -388,7 +430,19 @@ g:GITLOG_open_sub_on_search                           *g:GITLOG_open_sub_on_sear
 	But this makes the search useful. [1]
 
 ==============================================================================
-8. History                                       *gitlog-history*
+9. History                                       *gitlog-history*
+  5.1.1: Jan 1, 2017
+         PA: BUG: When refreshing a dir propagate changes up the tree.
+		 PA: BUG: Open files in directory that have been deleted.
+         PA: BUG: Fixed undefined variable for old versions of git.
+		 PA: BUG: Fixed work-dir work-tree incorrect parameter.
+		 PA: BUG: fixed backwards compatibility issue with expand().
+		 PA: BUG: fixed window error on exit.
+		 PA: BUG: Fixed file-system deleted files not showing up in tree.
+		 PA: BUG: Fixed tree reset in the root not correctly working.
+		 PA: NEW_FEATURE: Added file commands.
+		 PA: NEW_FEATURE: View commit as a patch.
+
   5.1.0: Dec 05, 2015
          PA: NEW_FEATURE: Toggle branch window.
          PA: NEW_FEATURE: Toggle Hidden files.
