@@ -1,7 +1,7 @@
 vimgitlog
 =========
 
-Version: 5.1.1
+Version: 6.0.0
 
 Git Tree, Log and Diff plugin for vim. 
 
@@ -89,6 +89,13 @@ And the should be it.
 <F7> will load the default window type, pressing again will switch between Log and Tree view. Pressing
 <F5> will flip between the views.
 
+For Windows you will need to have a git that works from Path. This has been tested against msysgit.
+This has not been tested on cywin (mostly as I hate it and not going to install that).
+
+I have noticed on Windows 10 it works seamlessly (with msysgit) but on Windows 7 it seems to throw a
+little cmd window each time git is called. This slows down the response time. Not much I can do about
+that for now.
+
 Configuration
 -------------
 
@@ -150,19 +157,11 @@ these are suffixes that I have chosen.
 Major Changes
 -------------
 
-## Bug Fixes and Tidy ups ##
+## Basic Functionality Works on Windows ##
 
-This is mostly fixes for backwards compatibility. Have run this on git < 2 and on vim < 7.4, things had gotten
-broken due to not doing backwards testing and not having to use older releases.
-
-## Added File Commands ##
-
-Simply as I user this as my main directory viewer it was getting annoying not to be able to do simple stuff
-from the menu.
-
-## View Commit Patch ##
-
-Basically that's it. Working on another big code base and this is becoming an issue.
+Really that is about it. Probably some new bugs as only ran through the features on a not very big repository
+and they seemed to work. I would normally use this for a few weeks first to see if anything pops up before
+release but have other things to do so going to just knock this release out.
 
 Issues
 ------

@@ -18,7 +18,6 @@
 "					  Released Under the Artistic Licence
 " ---------------------------------------------------------------------------------
 "
-
 " GLOBAL INITIALISERS
 "																				{{{
 " Version checking
@@ -55,7 +54,7 @@ endif
 
 
 " Version of the plugin
-let g:GITLOG_version = "5.1.1"
+let g:GITLOG_version = "6.0.0"
 
 " set up variables
 let s:help = 0
@@ -81,7 +80,7 @@ if !(exists("g:GITLOG_path_separator"))
 		let g:GITLOG_path_separator = '/'
 
 	elseif has('win32')
-		let g:GITLOG_path_separator = '\\'
+		let g:GITLOG_path_separator = '\'
 
 	else
 		echohl ErrorMsg
@@ -146,7 +145,7 @@ endif
 let s:gitlog_last_state = g:GITLOG_default_mode
 
 " So that the 'A' toggle has the correct state.
-if g:GITLOG_walk_full_tree == 1 && s:GITLOG_directory_default == 'open'
+if g:GITLOG_walk_full_tree == 1 && g:GITLOG_directory_default == 'open'
 	let s:tree_all_opened = 1
 else
 	let s:tree_all_opened = 0
@@ -158,7 +157,11 @@ let s:root_list = [[]]
 " symbols used in the list window
 let s:GITLOG_Any = '*'		" not really a symbol but used in the searches
 
-if !exists("g:GITLOG_DontUseUnicode") || g:GITLOG_DontUseUnicode == 0
+if has('multi_byte') && (!exists("g:GITLOG_DontUseUnicode") || g:GITLOG_DontUseUnicode == 0)
+	if has('multi_byte') && &encoding != "utf-8"
+		:set encoding=utf-8
+	endif
+
 	let s:GITLOG_Added		= '+ '
 	let s:GITLOG_Deleted	= '✗ '
 	let s:GITLOG_Changed	= '± '
@@ -252,7 +255,12 @@ function! GITLOG_DiffRevision()
 	let commit = s:GITLOG_GetCommitHash(line('.'))
 
 	if (commit != "")
-		let path = substitute(s:repository_root . s:history_file, s:root_list[s:history_root].root_dir, '', '')
+		let path = substitute(s:repository_root . s:history_file, s:root_list[s:history_root].escaped, '', '')
+
+		if has('win32')
+			let path = substitute( path, '\\', '/', 'g')
+		endif
+
 		let search_result = s:GITLOG_ExecuteGitCommand(s:history_root, "cat-file -t " . s:GITLOG_MakeRevision(commit, path))
 
 		if search_result[:3] != 'blob'
@@ -331,7 +339,12 @@ function! GITLOG_OpenRevision(as_history)
 	let commit = s:GITLOG_GetCommitHash(line('.'))
 
 	if (commit != "")
-		let path = substitute(s:repository_root . s:history_file, s:root_list[s:history_root].root_dir, '', '')
+		let path = substitute(s:repository_root . s:history_file, s:root_list[s:history_root].escaped, '', '')
+
+		if has('win32')
+			let path = substitute( path, '\\', '/', 'g')
+		endif
+
 		let search_result = s:GITLOG_ExecuteGitCommand(s:history_root, "cat-file -t " . s:GITLOG_MakeRevision(commit, path))
 
 		if search_result[:3] != 'blob'
@@ -456,7 +469,7 @@ function!	GITLOG_ToggleWindows(...)
 		let s:repository_root = fnamemodify(s:GITLOG_FindRespositoryRoot(s:revision_file), ':p')
 
 		if len(s:root_list) == 1
-			call add(s:root_list,{'git_dir':s:repository_root . '.git', 'root_dir': s:repository_root})
+			call add(s:root_list,{'git_dir':s:repository_root . '.git', 'root_dir': s:repository_root, 'escaped': escape(s:repository_root, ' \')})
 		endif
 
 		let fend = expand('%:t')
@@ -752,13 +765,12 @@ endfunction																		"}}}
 "
 function! s:GITLOG_ExecuteGitCommand(root_id, git_command)
 	if s:use_big_c
-		let run_command = "git --git-dir=" . s:root_list[a:root_id].git_dir . " -C " . s:root_list[a:root_id].root_dir . " --no-pager " . a:git_command
+		let run_command = "git -C " . s:root_list[a:root_id].root_dir . " --no-pager " . a:git_command
 	else
 		let run_command = "git --git-dir=" . s:root_list[a:root_id].git_dir . " --work-tree=" . s:root_list[a:root_id].root_dir . " --no-pager " . a:git_command
 	endif
 
 	let result = system(run_command)
-
 	if v:shell_error
 		let result = ''
 	endif
@@ -835,15 +847,24 @@ function! s:GITLOG_FindRespositoryRoot(filename)
 		echohl Normal
 
 	elseif repo_root == ""
-		let root = substitute(fnamemodify(root,':p'),"\\.git/","","")
+
+		let root = fnamemodify(root,':p:h:h')
 		let s:is_repo = 0
 
+		if root[-2:-1] == '//' || root[-2:-1] == '\\'
+			let root = root[0:-2]
+		endif
+
 	elseif root == ""
-		let root = substitute(fnamemodify(repo_root,':p'),"\\.repo/","","")
+        let root = fnamemodify(repo_root,':p:h:h')
 		let s:is_repo = 1
 
+		if repo_root[-2:-1] == '//' || repo_root[-2:-1] == '\\'
+			let repo_root = repo_root[0:-2]
+		endif
+
 	elseif (stridx(fnamemodify(root, ':p:h:h'), fnamemodify(repo_root, ':p:h:h'))) == 0
-		let root = substitute(fnamemodify(repo_root,':p'),"\\.repo/","","")
+		let root = substitute(fnamemodify(repo_root,':p'),"\.repo\\","","")
 		let s:is_repo = 1
 	endif
 
@@ -891,7 +912,7 @@ endfunction																	"}}}
 function! s:GITLOG_GetSubModuleDir(file_path)
 	let result = ''
 
-	if file_readable(a:file_path)
+	if filereadable(a:file_path)
 		let module_file = readfile(a:file_path)
 		let submodule_git_dir = ''
 
@@ -928,7 +949,7 @@ function! s:GITLOG_GetSubModuleDetails(file_path)
 
 	if (root != '')
 		let result = len(s:root_list)
-		call add(s:root_list,{'git_dir': root, 'root_dir': s:repository_root . a:file_path})
+		call add(s:root_list,{'git_dir': root, 'root_dir': s:repository_root . a:file_path, 'escaped': escape(s:repository_root . a:file_path, ' \')})
 	endif
 
 	return result
@@ -960,7 +981,6 @@ function! s:GITLOG_BuildFullTree(path, parent_item, recursive, modules_tree)
 
 	" now walk the new directory and build transverse the children
 	for item in s:directory_list[c_dir]
-
 		if item.type == 'tree' || item.type == 'commit' || item.type == 'link' || item.type == 'git'
 			let new_path = a:path . item.name . '/'
 
@@ -1349,7 +1369,7 @@ function! s:GITLOG_OpenLogWindow(parameter)
 
 		else
 			" root the item to the base of the directory root
-			let file_bit = '-- ' . substitute(fnamemodify(s:found_path . found_item.name,':p'), s:root_list[found_item.root_id].root_dir,"","")
+			let file_bit = '-- ' . substitute(fnamemodify(s:found_path . found_item.name,':p'), s:root_list[found_item.root_id].escaped,"","")
 			let s:history_root = found_item.root_id
 			let s:history_title = 'file: ' . found_item.name
 			let s:history_file = s:found_path . found_item.name
@@ -1570,9 +1590,14 @@ function! s:GITLOG_OpenDiffWindow(commit, file_path, found_item)
 
 		" Do we know where we are?
 		if a:found_item == {}
-			let gitlog_file = s:GITLOG_ExecuteGitCommand(1, "show " . s:GITLOG_MakeRevision(a:commit,a:file_path))
+			if has('win32')
+				let path = substitute( a:file_path, '\\', '/', 'g')
+			else
+				let path = a:file_path
+			endif
+			let gitlog_file = s:GITLOG_ExecuteGitCommand(1, "show " . s:GITLOG_MakeRevision(a:commit,path))
 		else
-			let path = substitute(file_root_path, s:root_list[a:found_item.root_id].root_dir, '', '')
+			let path = s:GITLOG_GetGitFilePath(a:found_item)
 			let gitlog_file = s:GITLOG_ExecuteGitCommand(a:found_item.root_id, "show " . s:GITLOG_MakeRevision(a:commit,path))
 		endif
 
@@ -1626,9 +1651,14 @@ function! s:GITLOG_OpenCodeWindow(commit,file_path,found_item,history)
 	else
 		" Do we know where we are?
 		if a:found_item == {}
-			let gitlog_file = s:GITLOG_ExecuteGitCommand(1, "show " . s:GITLOG_MakeRevision(a:commit,a:file_path))
+			if has('win32')
+				let path = substitute( a:file_path, '\\', '/', 'g')
+			else
+				let path = a:file_path
+			endif
+			let gitlog_file = s:GITLOG_ExecuteGitCommand(1, "show " . s:GITLOG_MakeRevision(a:commit,path))
 		else
-			let path = substitute(fnamemodify(a:file_path, ':p'), s:root_list[a:found_item.root_id].root_dir, '', '')
+			let path = s:GITLOG_GetGitFilePath(a:found_item)
 			let gitlog_file = s:GITLOG_ExecuteGitCommand(a:found_item.root_id, "show " . s:GITLOG_MakeRevision(a:commit,path))
 		endif
 
@@ -1853,6 +1883,32 @@ function! s:GITLOG_AddDirectoryItem(directory, marker, type, name, hash, parent_
 		call add(a:directory,new_item)
 	endif
 endfunction																	"}}}
+" FUNCTION: GITLOG_CaseSensitiveOrdering()									{{{
+"
+" This function will return a list of files is a case-sensitive order.
+"
+" vars:
+"	none
+"
+" returns:
+"	nothing
+"
+function! s:GITLOG_CaseSensitiveOrdering(directory_list)
+	let file_list = []
+
+	for item in a:directory_list
+		call add(file_list, fnamemodify(item, ":t"))
+	endfor
+
+	if has('win32')
+		" Nasty sort, always feels like a fail when a generic
+		" sort has to be called. But, git keeps file in a
+		" case sensitive order and Windows does not.
+		call sort(file_list)
+	endif
+
+	return file_list
+endfunction																	"}}}
 " FUNCTION: GITLOG_MakeDirectoryQuick(path_name,repository_root)			{{{
 "
 " This function does a quick directory generation it does not do any references
@@ -1876,14 +1932,10 @@ function! s:GITLOG_MakeDirectoryQuick(path_name, parent_item, recursive)
 		let local_files = []
 	endif
 
-
 	let current_dir = dot_files + local_files
-
 	let new_directory = []
 
-	for item in current_dir
-			let name = fnamemodify(item,":t")
-
+	for name in s:GITLOG_CaseSensitiveOrdering(current_dir)
 			if isdirectory(a:path_name . name)
 				if getftype(a:path_name . name) == 'link'
 					let local_type = 'link'
@@ -1894,7 +1946,10 @@ function! s:GITLOG_MakeDirectoryQuick(path_name, parent_item, recursive)
 					" add the new root to the list
 					let a:parent_item.type = 'git'
 					let a:parent_item.root_id = len(s:root_list)
-					call add(s:root_list,{'git_dir': fnamemodify(a:path_name . name . '/', ':p'), 'root_dir': fnamemodify(a:path_name, ':p')})
+					call add(s:root_list,{
+										\	'git_dir': fnamemodify(a:path_name . name . '/', ':p'),
+										\	'root_dir': fnamemodify(a:path_name, ':p'),
+										\	'escaped': escape(fnamemodify(a:path_name, ':p'), ' \')})
 				else
 					let local_type = 'tree'
 				endif
@@ -1905,7 +1960,7 @@ function! s:GITLOG_MakeDirectoryQuick(path_name, parent_item, recursive)
 			call s:GITLOG_AddDirectoryItem(new_directory, s:GITLOG_Same, local_type, name, '0', a:parent_item)
 	endfor
 
-	call add(s:directory_list,new_directory)
+	call add(s:directory_list, new_directory)
 	let result = len(s:directory_list) - 1
 
 	return result
@@ -2064,6 +2119,29 @@ function! s:GITLOG_HandleSame(directory_status, path_offset, item_name, dir_item
 
 	return result
 endfunction																	"}}}
+" FUNCTION: GITLOG_GetGitFilePath()										{{{
+"
+" This function will return from the object a file path that is relative
+" to the specific root. It will handle the windows to unix conversion for
+" the times when this is required.
+"
+" vars:
+"   item
+"
+" returns:
+"	nothing
+"
+function! s:GITLOG_GetGitFilePath(item)
+	if a:item.type == 'root'
+		let result = a:item.name
+	elseif a:item.parent.type != 'root' && a:item.parent.type != 'git' && a:item.parent.type != 'commit'
+		let result = s:GITLOG_GetGitFilePath(a:item.parent) . '/' . a:item.name
+	else
+		let result = a:item.name
+	endif
+
+	return result
+endfunction																	"}}}
 " FUNCTION: GITLOG_GitUpdateDirectory()										{{{
 "
 " This function will update the current item with the changes from the git
@@ -2081,7 +2159,13 @@ function! s:GITLOG_GitUpdateDirectory(path, dir_item)
 
 	if s:is_repo == 0
 		let changed = 0
-		let path_offset = substitute( s:GITLOG_GetFilePath(a:dir_item) . '/', s:root_list[a:dir_item.root_id].root_dir, '', '')
+		let path_offset = s:GITLOG_GetGitFilePath(a:dir_item)
+		let path_offset = substitute( s:GITLOG_GetFilePath(a:dir_item) . g:GITLOG_path_separator, s:root_list[a:dir_item.root_id].escaped, '', '')
+
+		if has('win32')
+			" ls-tree only works in unix paths.
+			let path_offset = substitute( path_offset, '\\', '/', 'g')
+		endif
 
 		" Ok, we need to get what files git thinks is in the current directory
 		if s:gitlog_current_commit == 'HEAD' || s:gitlog_current_commit != s:gitlog_current_branch
@@ -2202,6 +2286,7 @@ endfunction																	"}}}
 function! s:GITLOG_GetGitChangeTree(root_id, root_item)
 	" Actually just change status to git-diff --name-status works with the current head.
 
+
 	let status_report = split(s:GITLOG_ExecuteGitCommand(a:root_id, "ls-files -vmdo --full-name " . s:gitlog_current_commit . " " . s:root_list[a:root_id].root_dir), '\n')
 	let path_offset = substitute(s:root_list[a:root_id].root_dir, s:repository_root, '', '')
 
@@ -2270,6 +2355,7 @@ function! s:GITLOG_MapGitChanges(git_change_tree, parent_item)
 
 					call insert(s:directory_list[a:parent_item.child], new_item, item_id)
 
+                    " Ok, if it's a directory then we need to walk into it.
 					if a:git_change_tree.items[item].type == 'D'
 						call add(s:directory_list, [])
 						let new_item.child = len(s:directory_list) - 1
@@ -2299,6 +2385,8 @@ function! s:GITLOG_MapGitChanges(git_change_tree, parent_item)
 
 				" item was not found - must have been deleted add it the list
 				call add(s:directory_list[a:parent_item.child], new_item)
+
+                " Ok, but it is a directory so we need to walk into it.
 				if a:git_change_tree.items[item].type == 'D'
 					call add(s:directory_list, [])
 					let new_item.child = len(s:directory_list) - 1
@@ -2459,7 +2547,7 @@ function! s:GITLOG_FindListItem(current_id,line_number)
 			let result = s:GITLOG_FindListItem(item.child,a:line_number)
 
 			if (result != {})
-				let s:found_path = item.name . '/' . s:found_path
+				let s:found_path = item.name . g:GITLOG_path_separator . s:found_path
 				break
 			endif
 		endif
@@ -2497,7 +2585,7 @@ function! s:GITLOG_GetFilePath(item)
 	if a:item.type == 'root'
 		let result = s:root_list[a:item.root_id].root_dir[:-2]
 	elseif a:item.parent.type != 'root'
-		let result = s:GITLOG_GetFilePath(a:item.parent) . '/' . a:item.name
+		let result = s:GITLOG_GetFilePath(a:item.parent) . g:GITLOG_path_separator . a:item.name
 	else
 		let result = s:root_list[a:item.parent.root_id].root_dir . a:item.name
 	endif
@@ -2941,7 +3029,7 @@ function! GITLOG_ActionOpenDiffFile()
 
 	if found_item != {}
 		if found_item.type == 'blob' && found_item.marker != s:GITLOG_Deleted && found_item.marker != s:GITLOG_Added
-			let file_name = substitute(s:repository_root . s:found_path . found_item.name, s:root_list[found_item.root_id].root_dir, '', '')
+			let file_name = substitute(s:repository_root . s:found_path . found_item.name, s:root_list[found_item.root_id].escaped, '', '')
 
 			call s:GITLOG_OpenDiffWindow(s:gitlog_current_commit,file_name,found_item)
 		endif
@@ -3038,9 +3126,7 @@ function! GITLOG_ActionOpenHistoryItem()
 					let @" = temp
 
 					" now open the code window
-					if found_item.root_id > 1
-						let file_name = substitute(s:repository_root . file_name,s:root_list[found_item.root_id].root_dir,"","")
-					endif
+					let file_name = s:GITLOG_GetGitFilePath(found_item)
 
 					let gitlog_file = s:GITLOG_ExecuteGitCommand(found_item.root_id, "--no-pager show " . s:gitlog_current_commit . ':' . file_name)
 
@@ -3436,7 +3522,7 @@ function! GITLOG_ActionFileAdd()
 			else
 				"Ok, just a file.
 				let file_name = s:GITLOG_GetFilePath(found_item)
-				let path = substitute(file_name, s:root_list[found_item.root_id].root_dir, '', '')
+				let path = substitute(file_name, s:root_list[found_item.root_id].escaped, '', '')
 
 				call s:GITLOG_ExecuteGitCommand(found_item.root_id, "add " . path)
 
@@ -3473,7 +3559,7 @@ function! GITLOG_ActionFileDelete(remove_from_git)
 				if delete_path ==? 'y'
 					"Ok, just a file.
 					if (a:remove_from_git == 1)
-						let path = substitute(file_name, s:root_list[found_item.root_id].root_dir, '', '')
+						let path = substitute(file_name, s:root_list[found_item.root_id].escaped, '', '')
 						call s:GITLOG_ExecuteGitCommand(found_item.root_id, "rm " . path)
 					else
 						call delete(file_name)

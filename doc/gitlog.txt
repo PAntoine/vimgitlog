@@ -10,8 +10,8 @@
 
 
 Author:   Peter Antoine
-Date:     Jan 1, 2017
-Version:  5.1.1
+Date:     Jan 20, 2017
+Version:  6.0.0
 
 HomePage: https://github.com/PAntoine/vimgitlog
 
@@ -431,6 +431,13 @@ g:GITLOG_open_sub_on_search                           *g:GITLOG_open_sub_on_sear
 
 ==============================================================================
 9. History                                       *gitlog-history*
+  6.0.0: Jan 20, 2017
+		 PA: BUG: Windows needs to pass unix paths to git
+		 PA: BUG: Fix pathing for file diff
+		 PA: BUG: Part of fix case-sensitive directory ordering.
+		 PA: BUG: Fix setup for multi-byte encoding.
+		 PA: BUG: Fix path handling for windows.
+
   5.1.1: Jan 1, 2017
          PA: BUG: When refreshing a dir propagate changes up the tree.
 		 PA: BUG: Open files in directory that have been deleted.
